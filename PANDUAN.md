@@ -1,12 +1,12 @@
 # Panduan Setup Arus di iPhone
 
-Ganti `USERNAME` di bawah dengan username GitHub-mu. Alamat aplikasinya: **https://USERNAME.github.io/arus/**
+Ganti `fathurhmnism` di bawah dengan username GitHub-mu. Alamat aplikasinya: **https://fathurhmnism.github.io/arus/**
 
 ---
 
 ## 1. Mulai pakai (bisa hari ini, iOS 26)
 
-1. Buka **https://USERNAME.github.io/arus/** di **Safari**.
+1. Buka **https://fathurhmnism.github.io/arus/** di **Safari**.
 2. Isi nama, budget bulanan, dan saldo tiap akun, lalu ketuk **Gas, mulai!**
 3. Catat transaksi lewat tombol **+** di tengah bawah.
 
@@ -22,12 +22,12 @@ Shortcut ini membuka aplikasinya sekaligus membawa isi kotak masuk dari notifika
    2. **Jika** (If) *File* **memiliki nilai apa pun**:
       1. **Enkode Base64** (Base64 Encode) dari *File*. Atur *Jeda Baris* = **Tidak Ada**.
       2. **Enkode URL** (URL Encode) dari *Teks Ter-enkode Base64*.
-      3. **Teks**: `https://USERNAME.github.io/arus/#inbox=` lalu sisipkan variabel *Teks Ter-enkode URL* tepat di belakangnya (tanpa spasi).
+      3. **Teks**: `https://fathurhmnism.github.io/arus/#inbox=` lalu sisipkan variabel *Teks Ter-enkode URL* tepat di belakangnya (tanpa spasi).
       4. **Buka URL** (Open URLs) dari *Teks*.
       5. **Hapus File** (Delete Files) dari *File*. Matikan *Konfirmasi Sebelum Menghapus*.
    3. **Jika Tidak** (Otherwise):
-      1. **Buka URL**: `https://USERNAME.github.io/arus/#beranda`
-3. Ketuk nama shortcut di atas, pilih **Tambahkan ke Layar Utama**. Pakai gambar Cuki (simpan dari https://USERNAME.github.io/arus/apple-touch-icon.png) dan beri nama **Arus**.
+      1. **Buka URL**: `https://fathurhmnism.github.io/arus/#beranda`
+3. Ketuk nama shortcut di atas, pilih **Tambahkan ke Layar Utama**. Pakai gambar Cuki (simpan dari https://fathurhmnism.github.io/arus/apple-touch-icon.png) dan beri nama **Arus**.
 
 Mulai sekarang, buka Arus selalu dari ikon ini.
 
