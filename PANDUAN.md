@@ -31,25 +31,27 @@ Shortcut ini membuka aplikasinya sekaligus membawa isi kotak masuk dari notifika
 
 Mulai sekarang, buka Arus selalu dari ikon ini.
 
-## 3. Pencatatan otomatis dari notifikasi (butuh iOS 27)
+## 3. Pencatatan otomatis dari notifikasi (iOS 27, sudah teruji dengan SeaBank)
 
 Satu otomasi untuk setiap aplikasi: Mandiri, BCA, BRI, Jago, SeaBank, GoPay, OVO, ShopeePay, DANA. Binance tidak perlu.
 
-1. Pintasan → tab **Otomatisasi** → **+** → pilih pemicu **Notifikasi**.
-2. **App**: pilih aplikasinya (mis. GoPay). Biarkan filter judul/pesan kosong.
-3. Pilih **Jalankan Segera** dan matikan *Beri Tahu Saat Dijalankan*.
-4. Tambahkan tindakan:
-   1. **Teks**, isi persis seperti ini (bagian dalam `[...]` adalah variabel, pilih dari menu variabel):
-      ```
-      @@ARUS
-      app: GoPay
-      time: [Tanggal Saat Ini, format kustom: yyyy-MM-dd HH:mm]
-      title: [Input Pintasan → Judul]
-      body: [Input Pintasan → Isi/Pesan]
-      ```
-      Baris `app:` diisi nama akun persis seperti di Arus (GoPay, BCA, dst.).
-   2. **Tambahkan ke File Teks** (Append to Text File). Isi teks = *Teks* di atas, path = `Arus/kotak-masuk.txt`, *Buat Baris Baru* menyala. Kalau ada pilihan lokasi, pilih **Di iPhone Saya**.
-5. Ulangi untuk aplikasi lain. Cara cepatnya: buat satu dulu sampai berhasil, lalu tinggal ganti App dan baris `app:`.
+1. Pintasan → **Automation** → **+** → pemicu **Notification** → pilih aplikasinya (mis. SeaBank).
+2. **Jangan tambah filter** (Add Filter). Filter yang kosong membuat otomasinya mati.
+3. Nyalakan **Automation** dan matikan **Notify**.
+4. Tambah aksi **Text** (lewat Search), lalu isi:
+   ```
+   @@ARUS
+   app: SeaBank
+   time: [Date]
+   title: [Title]
+   subtitle: [Subtitle]
+   body: [Body]
+   ```
+   Bagian `[...]` adalah variabel (pill biru berikon lonceng), bukan teks ketikan. Masukkan variabel **Notification**, lalu ketuk pill-nya dan pilih bagian **Date / Title / Subtitle / Body**. Baris `app:` diisi nama akun persis seperti di Arus.
+5. Tambah aksi **Append to Text File**: teks = variabel **Text**. Ketuk nama folder (default "Shortcuts") → pilih **On My iPhone** → folder **Arus**. File Path = `kotak-masuk.txt`. **Make New Line** nyala.
+6. Untuk aplikasi lain, buat otomasi baru dengan cara yang sama, lalu ganti aplikasi di pemicu dan baris `app:`.
+
+Catatan: menekan tombol ▶ di editor akan menambah entri kosong. Ini aman, karena Arus mengabaikan entri kosong.
 
 ## 4. Uji teknis (lakukan sekali, setelah iOS 27)
 

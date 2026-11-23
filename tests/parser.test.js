@@ -19,3 +19,20 @@ for(const [app,title,body,amt,dir,mer] of cases){const r=P.parse({app,title,body
 console.log(ok+'/'+cases.length);
 const inbox=P.parseInboxText('@@ARUS\napp: GoPay\ntime: 2026-11-20 08:12\ntitle: Pembayaran berhasil\nbody: Kamu bayar Rp24.000\nke Kopi Kenangan\n@@ARUS\napp: BCA\ntime: 2026-11-20 09:00\ntitle: x\nbody: y');
 console.log(JSON.stringify(inbox), P.parseTime('2026-11-20 08:12').toString());
+// Notifikasi SeaBank asli (23 Nov 2026)
+const real = P.parseInboxText(`@@ARUS
+app: SeaBank
+time: 
+title:
+subtitle: 
+body: 
+@@ARUS
+app: SeaBank
+time: 23 Nov 2026
+title:Realtime Transfer
+subtitle: 
+body: Kamu baru melakukan transfer real-time senilai Rp10.000 pada 23 Nov 2026 15:40. Jika kamu tidak melakukan ini, segera hubungi 1500130.
+`);
+const r = P.parse(real[0]);
+const okReal = real.length === 1 && r.amount === 10000 && r.direction === 'out' && !r.skip && P.parseTime(real[0].time).getHours() === 15 && P.parseTime(real[0].time).getMinutes() === 40;
+console.log(okReal ? 'OK  SeaBank asli' : 'FAIL SeaBank asli', JSON.stringify(real), JSON.stringify(r));

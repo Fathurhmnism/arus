@@ -16,7 +16,8 @@ var ArusParser = (function () {
   var TOPUP = ['top up', 'topup', 'top-up', 'isi saldo', 'isi ulang saldo'];
   var OUT = ['pembayaran', 'bayar', 'dibayar', 'membayar', 'transfer ke', 'transfer keluar', 'kirim', 'dikirim', 'mengirim',
     'tarik tunai', 'penarikan', 'debit', 'pembelian', 'membeli', 'belanja', 'keluar', 'qris', 'payment', 'paid', 'sent',
-    'transaksi berhasil', 'transaksi sukses', 'berhasil transfer'];
+    'transaksi berhasil', 'transaksi sukses', 'berhasil transfer', 'melakukan transfer', 'melakukan pembayaran',
+    'transfer real', 'realtime transfer', 'transfer senilai', 'transfer sebesar', 'kamu transfer', 'anda transfer'];
 
   function lower(s) { return String(s || '').toLowerCase(); }
   function has(t, list) { for (var i = 0; i < list.length; i++) if (t.indexOf(list[i]) >= 0) return list[i]; return null; }
@@ -110,7 +111,13 @@ var ArusParser = (function () {
         else if (cur === 'body' || cur === 'title' || cur === 'subtitle') e[cur] += (e[cur] ? '\n' : '') + line;
       });
       e.title = [e.title.trim(), e.subtitle.trim()].filter(Boolean).join(' · '); delete e.subtitle; e.body = e.body.trim(); e.app = e.app.trim(); e.time = e.time.trim();
-      if (e.app || e.body || e.title) out.push(e);
+      if (!e.body && !e.title) return;
+      if (!/\d{1,2}[:.]\d{2}/.test(e.time)) {
+        var dt = /(\d{1,2}\s+[A-Za-z]{3,9}\.?\s+\d{4}|\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{2,4})[ ,]*(?:pukul|jam|at)?\s*(\d{1,2}[:.]\d{2})/i.exec(e.title + ' ' + e.body);
+        if (dt) e.time = dt[1] + ' ' + dt[2];
+        else if (e.time) e.time = e.time + ' ' + (function (n) { return ('0' + n.getHours()).slice(-2) + ':' + ('0' + n.getMinutes()).slice(-2); })(new Date());
+      }
+      out.push(e);
     });
     return out;
   }
