@@ -116,10 +116,27 @@ var ArusParser = (function () {
   }
 
   /* "2026-11-20 08:12" | ISO | "20 Nov 2026 08.12" -> Date */
+  var MONTHS = { jan: 0, feb: 1, mar: 2, apr: 3, mei: 4, may: 4, jun: 5, jul: 6, agu: 7, agt: 7, aug: 7, sep: 8, okt: 9, oct: 9, nov: 10, des: 11, dec: 11 };
+  function hm(str) {
+    var m = /(\d{1,2})[:.](\d{2})(?:[:.]\d{2})?\s*(am|pm|AM|PM)?/.exec(str);
+    if (!m) return [0, 0];
+    var h = +m[1], ap = (m[3] || '').toLowerCase();
+    if (ap === 'pm' && h < 12) h += 12; if (ap === 'am' && h === 12) h = 0;
+    return [h, +m[2]];
+  }
+  /* "2026-11-23 15:25" | ISO | "23 Nov 2026 at 15.25" | "Nov 23, 2026 at 3:25 PM" | "23/11/26, 15.25" -> Date */
   function parseTime(s) {
     if (!s) return new Date();
+    s = String(s).trim();
     var m = /(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2})[:.](\d{2})/.exec(s);
     if (m) return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+    var rest, t;
+    m = /(\d{1,2})\s+([A-Za-z]{3})[a-z]*\.?\s+(\d{4})/.exec(s);
+    if (m && MONTHS[m[2].toLowerCase()] !== undefined) { rest = s.slice(m.index + m[0].length); t = hm(rest); return new Date(+m[3], MONTHS[m[2].toLowerCase()], +m[1], t[0], t[1]); }
+    m = /([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})/.exec(s);
+    if (m && MONTHS[m[1].toLowerCase()] !== undefined) { rest = s.slice(m.index + m[0].length); t = hm(rest); return new Date(+m[3], MONTHS[m[1].toLowerCase()], +m[2], t[0], t[1]); }
+    m = /(\d{1,2})\/(\d{1,2})\/(\d{2,4})/.exec(s);
+    if (m) { var y = +m[3]; if (y < 100) y += 2000; rest = s.slice(m.index + m[0].length); t = hm(rest); return new Date(y, +m[2] - 1, +m[1], t[0], t[1]); }
     var d = new Date(s);
     return isNaN(d) ? new Date() : d;
   }
