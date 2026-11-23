@@ -103,13 +103,13 @@ var ArusParser = (function () {
     var out = [];
     String(raw || '').replace(/\r/g, '').split('@@ARUS').forEach(function (block) {
       if (!block.trim()) return;
-      var e = { app: '', time: '', title: '', body: '' }, cur = null;
+      var e = { app: '', time: '', title: '', subtitle: '', body: '' }, cur = null;
       block.split('\n').forEach(function (line) {
-        var m = /^(app|time|title|body)\s*:\s?(.*)$/i.exec(line);
-        if (m) { cur = m[1].toLowerCase(); e[cur] = m[2]; }
-        else if (cur === 'body' || cur === 'title') e[cur] += (e[cur] ? '\n' : '') + line;
+        var m = /^(app|time|title|subtitle|body|message)\s*:\s?(.*)$/i.exec(line);
+        if (m) { cur = m[1].toLowerCase(); if (cur === 'message') cur = 'body'; e[cur] = m[2]; }
+        else if (cur === 'body' || cur === 'title' || cur === 'subtitle') e[cur] += (e[cur] ? '\n' : '') + line;
       });
-      e.title = e.title.trim(); e.body = e.body.trim(); e.app = e.app.trim(); e.time = e.time.trim();
+      e.title = [e.title.trim(), e.subtitle.trim()].filter(Boolean).join(' · '); delete e.subtitle; e.body = e.body.trim(); e.app = e.app.trim(); e.time = e.time.trim();
       if (e.app || e.body || e.title) out.push(e);
     });
     return out;
