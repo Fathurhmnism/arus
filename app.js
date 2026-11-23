@@ -240,7 +240,8 @@ function vOnboarding() {
   <div class="box pad form"><div class="lab">Saldo sekarang di tiap akun (opsional)</div>
   ${S.accounts.filter(a => a.kind !== 'investasi').map(a => `<label for="ob-${a.id}">${esc(a.name)}<input id="ob-${a.id}" inputmode="numeric" placeholder="0" data-amt value="${a.initial ? nf.format(a.initial) : ''}"></label>`).join('')}
   <p class="note">Stockbit & Binance bisa diisi nanti di menu Aset.</p></div>
-  <button class="btn pri" data-act="ob-done">Gas, mulai!</button></div>`;
+  <button class="btn pri" data-act="ob-done">Gas, mulai!</button>
+  <div class="box pad form"><div class="lab">Udah pernah pakai Arus di tempat lain?</div><p class="note">Pulihkan dari file backup (.json), datamu balik semua.</p><button class="btn" data-act="restore">Pulihkan dari backup</button></div></div>`;
 }
 
 function vBeranda() {
