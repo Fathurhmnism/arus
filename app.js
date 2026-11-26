@@ -8,7 +8,7 @@ const nf = new Intl.NumberFormat('id-ID');
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 const MON = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 const DAYS = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
-const AV_COLORS = ['#7DD3FC','#FDBA74','#FF5FA2','#C6FF3D','#C4B5FD','#FDE68A','#86EFAC','#FCA5A5'];
+const AV_COLORS = ['#2B3A55','#3A2E4F','#2E4A40','#4A3826','#4A2E33','#2A4048','#45402A','#353841'];
 
 /* ---------- util ---------- */
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -213,7 +213,7 @@ function itemReady(it) {
 
 /* ---------- tampilan ---------- */
 let curMonth = monthOf(today()), filter = 'all', query = '';
-const VIEWS = ['beranda', 'kotak', 'riwayat', 'aset', 'budget', 'pengaturan'];
+const VIEWS = ['beranda', 'kotak', 'riwayat', 'aset', 'budget', 'pengaturan', 'lainnya'];
 const view = () => { const h = location.hash.replace('#', ''); return VIEWS.includes(h) ? h : 'beranda'; };
 function header(title, sub, right) {
   return `<header class="top"><div><div class="d">${esc(sub)}</div><h1>${esc(title)}</h1></div><div class="r">${right || ''}</div></header>`;
@@ -225,7 +225,7 @@ function txRow(t, withDate) {
   else { title = t.merchant || (c ? c.name : 'Tanpa kategori'); sub = [t.merchant && c ? c.name : '', a ? a.name : '', t.time || ''].filter(Boolean).join(' · '); }
   if (t.type === 'income') { cls = 'plus'; sign = '+'; }
   const name = t.type === 'transfer' ? 'TF' : initials(title);
-  return `<button class="row" data-act="tx-edit" data-id="${t.id}"><span class="av" style="background:${t.type === 'transfer' ? '#fff' : avColor(title)}">${esc(name)}</span><span class="m"><b>${esc(title)}</b><span>${esc(sub)}${t.note ? ' · ' + esc(t.note) : ''}</span></span><span class="v num ${cls}">${sign}${nf.format(t.amount)}${withDate ? `<small>${esc(dateLabel(t.date))}</small>` : ''}</span></button>`;
+  return `<button class="row" data-act="tx-edit" data-id="${t.id}"><span class="av" style="background:${t.type === 'transfer' ? '#2A2D35' : avColor(title)}">${esc(name)}</span><span class="m"><b>${esc(title)}</b><span>${esc(sub)}${t.note ? ' · ' + esc(t.note) : ''}</span></span><span class="v num ${cls}">${sign}${nf.format(t.amount)}${withDate ? `<small>${esc(dateLabel(t.date))}</small>` : ''}</span></button>`;
 }
 const sortTx = list => list.slice().sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || '')) || (b.created || 0) - (a.created || 0));
 
@@ -251,7 +251,7 @@ function vBeranda() {
   const C = COPY[moodKey];
   const pend = S.inbox.filter(x => x.status === 'pending').length;
   const pct = Math.min(100, Math.round(d.pct * 100));
-  const meterColor = d.mood === 'boncos' ? 'var(--pink)' : d.mood === 'hampir' ? '#FF9F43' : 'var(--lime)';
+  const meterColor = d.mood === 'boncos' ? 'var(--pink)' : d.mood === 'hampir' ? 'var(--warn)' : 'var(--lime)';
   const statusColor = moodKey === 'boncos' ? 'var(--bad)' : moodKey === 'hampir' ? 'var(--warn)' : 'var(--good)';
   const now = new Date();
   let h = header('Yo, ' + S.name + '!', DAYS[now.getDay()] + ' ' + pad(now.getDate()) + '.' + pad(now.getMonth() + 1),
@@ -295,7 +295,7 @@ function vKotak() {
       continue; }
     h += inboxCard(it);
   }
-  if (skipped.length) h += `<div class="sec"><h2>Dibuang otomatis</h2><span class="note">${skipped.length}</span></div><div class="box list">${skipped.slice(-10).reverse().map(it => `<div class="row"><span class="av" style="background:#eee">${esc(initials(it.app))}</span><span class="m"><b>${esc(it.p.reason || 'Bukan transaksi')}</b><span>${esc(it.title + ' ' + it.body)}</span></span><button class="btn sm" data-act="unskip" data-id="${it.id}">Ini transaksi</button></div>`).join('')}</div>`;
+  if (skipped.length) h += `<div class="sec"><h2>Dibuang otomatis</h2><span class="note">${skipped.length}</span></div><div class="box list">${skipped.slice(-10).reverse().map(it => `<div class="row"><span class="av" style="background:#2A2D35">${esc(initials(it.app))}</span><span class="m"><b>${esc(it.p.reason || 'Bukan transaksi')}</b><span>${esc(it.title + ' ' + it.body)}</span></span><button class="btn sm" data-act="unskip" data-id="${it.id}">Ini transaksi</button></div>`).join('')}</div>`;
   return h;
 }
 function inboxCard(it) {
@@ -303,8 +303,8 @@ function inboxCard(it) {
   const time = new Date(it.at);
   const seg = [['expense', 'Keluar'], ['income', 'Masuk'], ['transfer', 'Transfer']].map(([v, l]) => `<button data-act="ib-type" data-id="${it.id}" data-v="${v}" aria-pressed="${ty === v}">${l}</button>`).join('');
   let body = '';
-  if (!it.accountId) body += `<label class="lab">Akun mana?<select data-ib="acc" data-id="${it.id}" style="border:2.5px solid #111;border-radius:12px;padding:10px"><option value="">Pilih akun</option>${S.accounts.map(x => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select></label>`;
-  if (!it.p.amount) body += `<label class="lab">Nominal<input data-ib="amt" data-id="${it.id}" inputmode="numeric" style="border:2.5px solid #111;border-radius:12px;padding:10px"></label>`;
+  if (!it.accountId) body += `<label class="lab">Akun mana?<select data-ib="acc" data-id="${it.id}" class="inp"><option value="">Pilih akun</option>${S.accounts.map(x => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select></label>`;
+  if (!it.p.amount) body += `<label class="lab">Nominal<input data-ib="amt" data-id="${it.id}" inputmode="numeric" class="inp"></label>`;
   if (ty === 'transfer') body += `<div class="lab">${it.p.direction === 'in' ? 'Dari akun' : 'Ke akun'}</div><div class="accs">${S.accounts.filter(x => x.id !== it.accountId).map(x => `<button data-act="ib-to" data-id="${it.id}" data-v="${x.id}" aria-pressed="${it.ui.toId === x.id}">${esc(x.name)}</button>`).join('')}</div>`;
   else if (ty) { const sug = suggestCats(it.p.merchant, it.title + ' ' + it.body, ty).slice(0, 7);
     body += `<div class="cats">${sug.map(id => `<button data-act="ib-cat" data-id="${it.id}" data-v="${id}" aria-pressed="${it.ui.catId === id}">${esc(cat(id).name)}</button>`).join('')}</div>`; }
@@ -362,7 +362,7 @@ function vBudget() {
   h += `<div class="box pad form"><div class="h" style="display:flex;justify-content:space-between;align-items:center"><span class="lab">Budget bulanan</span><button class="btn sm" data-act="budget-edit">Ubah</button></div>
   <span class="big2 num">${S.budget ? rp(S.budget) : 'Belum diatur'}</span>`;
   if (S.budget) { const p = Math.min(100, d.month / S.budget * 100);
-    h += `<div class="bar"><i style="width:${p}%;background:${p >= 100 ? 'var(--pink)' : p >= 80 ? '#FF9F43' : 'var(--lime)'}"></i></div><p class="note num">Terpakai ${rp(d.month)} · sisa ${rp(d.sisaBudget)} · ${d.left} hari lagi · jatah harian ${k(d.jatah)}</p>`; }
+    h += `<div class="bar"><i style="width:${p}%;background:${p >= 100 ? 'var(--pink)' : p >= 80 ? 'var(--warn)' : 'var(--lime)'}"></i></div><p class="note num">Terpakai ${rp(d.month)} · sisa ${rp(d.sisaBudget)} · ${d.left} hari lagi · jatah harian ${k(d.jatah)}</p>`; }
   if (n) h += `<p class="note">Rata-rata pengeluaranmu ${n} bulan terakhir: <b class="num">${rp(avg / n)}</b>/bulan.</p>`;
   h += `</div><div class="sec"><h2>Habis ke mana aja</h2><span class="note num">${k(total)}</span></div>`;
   h += ids.length ? `<div class="box pad" style="display:flex;flex-direction:column;gap:12px">${ids.map(id => { const c = cat(id), p = by[id] / total * 100;
@@ -371,7 +371,7 @@ function vBudget() {
 }
 
 function vPengaturan() {
-  let h = header('Pengaturan', 'Arus v' + VERSION, `<button class="pill" data-act="go" data-to="beranda">← Balik</button>`);
+  let h = header('Pengaturan', 'Arus v' + VERSION, `<button class="pill" data-act="go" data-to="lainnya">← Balik</button>`);
   h += `<div class="box pad form"><label for="set-name">Nama panggilan<input id="set-name" value="${esc(S.name)}" maxlength="20"></label><button class="btn sm" data-act="save-name">Simpan nama</button></div>`;
   h += `<div class="sec"><h2>Backup</h2><span class="note">Terakhir: ${S.lastBackup ? esc(dateLabel(S.lastBackup.slice(0, 10))) : 'belum pernah'}</span></div>
   <div class="box pad form"><p class="note">Datamu cuma ada di HP ini. Simpan backup ke app Files (bukan iCloud kalau mau 100% offline) secara rutin.</p>
@@ -381,11 +381,25 @@ function vPengaturan() {
   return h;
 }
 
+function vLainnya() {
+  const pend = S.inbox.filter(x => x.status === 'pending').length;
+  const ic = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+  const item = (to, icon, title, sub) => `<button class="row" data-act="go" data-to="${to}">${ic(icon)}<span class="m"><b>${title}</b><span>${sub}</span></span><span class="go" aria-hidden="true">›</span></button>`;
+  let h = header('Lainnya', 'Arus v' + VERSION);
+  h += `<div class="box list menu">
+    ${item('kotak', '<path d="M3 13h5l2 3h4l2-3h5"/><path d="M5 5h14l2 8v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6z"/>', 'Kotak masuk', pend ? pend + ' transaksi menunggu dicek' : 'Semua sudah rapi')}
+    ${item('riwayat', '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', 'Riwayat', 'Semua transaksi per bulan')}
+    ${item('pengaturan', '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>', 'Pengaturan', 'Backup, kategori, nama')}
+  </div>`;
+  return h;
+}
+
 function render() {
   const v = S.setupDone ? view() : 'onboarding';
-  const fn = { onboarding: vOnboarding, beranda: vBeranda, kotak: vKotak, riwayat: vRiwayat, aset: vAset, budget: vBudget, pengaturan: vPengaturan }[v];
+  const fn = { onboarding: vOnboarding, beranda: vBeranda, kotak: vKotak, riwayat: vRiwayat, aset: vAset, budget: vBudget, pengaturan: vPengaturan, lainnya: vLainnya }[v];
   $('#main').innerHTML = fn();
-  document.querySelectorAll('nav.tabs a[data-v]').forEach(a => a.dataset.v === v ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
+  const navV = ['kotak', 'riwayat', 'pengaturan'].includes(v) ? 'lainnya' : v;
+  document.querySelectorAll('nav.tabs a[data-v]').forEach(a => a.dataset.v === navV ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
   $('nav.tabs').style.display = v === 'onboarding' ? 'none' : '';
   document.querySelectorAll('[data-amt], #ob-budget').forEach(bindAmt);
   const q = $('#q'); if (q) q.addEventListener('input', () => { query = q.value; const list = sortTx(S.transactions.filter(t => monthOf(t.date) === curMonth && (filter === 'all' || t.type === filter))); const qq = norm(query);
