@@ -390,21 +390,77 @@ function vAset() {
   return h;
 }
 
+/* ---------- toples ---------- */
+const JAR = 'M48 30 L48 46 C48 60 28 64 28 86 L28 200 C28 214 40 223 56 223 L144 223 C160 223 172 214 172 200 L172 86 C172 64 152 60 152 46 L152 30 Z';
+function jarSvg(id, f, w, detail, warn) {
+  f = Math.max(0, Math.min(1, f || 0));
+  let seed = 7 + id.length * 13; for (const c of id) seed = (seed * 31 + c.charCodeAt(0)) % 2147483647;
+  const rnd = () => (seed = (seed * 48271) % 2147483647) / 2147483647, u = (a, b) => a + rnd() * (b - a);
+  const g = warn ? ['#F2C2A2', '#C98763', '#7E4A31'] : ['#F7E2A6', '#D2A955', '#8C6526'];
+  const top = 216 - f * 146, h = Math.round(w * 1.2);
+  const coin = (x, y, r, ring) => `<g transform="rotate(${r.toFixed(0)} ${x.toFixed(0)} ${y.toFixed(0)})"><ellipse cx="${x.toFixed(0)}" cy="${(y + 2.6).toFixed(1)}" rx="13" ry="5.4" fill="${g[2]}"/><ellipse cx="${x.toFixed(0)}" cy="${y.toFixed(1)}" rx="13" ry="5.4" fill="url(#${id}co)"/>${ring ? `<ellipse cx="${x.toFixed(0)}" cy="${y.toFixed(1)}" rx="8" ry="3.2" fill="none" stroke="${g[2]}" stroke-width=".7" opacity=".6"/>` : ''}</g>`;
+  let coins = '';
+  if (f > 0) {
+    coins += `<rect x="0" y="${(top + 10).toFixed(0)}" width="200" height="240" fill="${g[2]}" opacity=".55"/>`;
+    for (let y = 218; y > top; y -= detail ? 6.5 : 9) for (let x = 24 + u(0, 14); x < 178; x += u(19, 25)) coins += coin(x, y + u(-2, 2), u(-14, 14), detail);
+    for (let i = 0; i < (detail ? 4 : 2); i++) coins += coin(u(50, 150), top + u(-3, 2), u(-35, 35), false);
+  }
+  return `<svg width="${w}" height="${h}" viewBox="0 0 200 240" aria-hidden="true"><defs>
+<clipPath id="${id}c"><path transform="translate(100 130) scale(.94) translate(-100 -130)" d="${JAR}"/></clipPath>
+<linearGradient id="${id}gl" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".18" stop-color="#fff" stop-opacity=".03"/><stop offset=".75" stop-color="#fff" stop-opacity=".02"/><stop offset="1" stop-color="#fff" stop-opacity=".18"/></linearGradient>
+<linearGradient id="${id}co" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${g[0]}"/><stop offset=".55" stop-color="${g[1]}"/><stop offset="1" stop-color="${g[2]}"/></linearGradient>
+<linearGradient id="${id}hl" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+<radialGradient id="${id}sh"><stop offset="0" stop-color="#000" stop-opacity=".7"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient></defs>
+<ellipse cx="100" cy="226" rx="82" ry="11" fill="url(#${id}sh)"/><path d="${JAR}" fill="url(#${id}gl)"/>
+<g clip-path="url(#${id}c)">${coins}</g>
+<path d="${JAR}" fill="none" stroke="#fff" stroke-opacity=".38" stroke-width="${detail ? 1.6 : 3}"/>
+<path d="M40 92 C38 130 38 170 42 205" fill="none" stroke="url(#${id}hl)" stroke-width="7" stroke-linecap="round" opacity=".8"/>
+<path d="M162 100 C164 140 164 175 161 198" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="2.5" stroke-linecap="round"/>
+<path d="M58 70 C66 64 76 62 86 62" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="2" stroke-linecap="round"/>
+<path d="M36 214 C60 226 140 226 164 214" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="3"/>
+<ellipse cx="100" cy="30" rx="52" ry="7" fill="#0C0D10" fill-opacity=".35" stroke="#fff" stroke-opacity=".55" stroke-width="1.6"/>
+<ellipse cx="100" cy="31" rx="47" ry="5" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="1"/></svg>`;
+}
+const catBudgets = () => S.catBudget || {};
 function vBudget() {
   const d = daily(), m = monthOf(today());
   const by = {}; S.transactions.forEach(t => { if (t.type === 'expense' && monthOf(t.date) === m) by[t.categoryId] = (by[t.categoryId] || 0) + t.amount; });
   const ids = Object.keys(by).sort((a, b) => by[b] - by[a]), total = ids.reduce((s, i) => s + by[i], 0);
   let avg = 0, n = 0; for (let i = 1; i <= 3; i++) { const e = monthTotals(addMonth(m, -i)).exp; if (e) { avg += e; n++; } }
-  let h = header('Budget', monthLabel(m));
-  h += `<div class="box pad form"><div class="h" style="display:flex;justify-content:space-between;align-items:center"><span class="lab">Budget bulanan</span><button class="btn sm" data-act="budget-edit">Ubah</button></div>
-  <span class="big2 num">${S.budget ? rp(S.budget) : 'Belum diatur'}</span>`;
-  if (S.budget) { const p = Math.min(100, d.month / S.budget * 100);
-    h += `<div class="bar"><i style="width:${p}%;background:${p >= 100 ? 'var(--pink)' : p >= 80 ? 'var(--warn)' : 'var(--lime)'}"></i></div><p class="note num">Terpakai ${rp(d.month)} · sisa ${rp(d.sisaBudget)} · ${d.left} hari lagi · jatah harian ${k(d.jatah)}</p>`; }
-  if (n) h += `<p class="note">Rata-rata pengeluaranmu ${n} bulan terakhir: <b class="num">${rp(avg / n)}</b>/bulan.</p>`;
-  h += `</div><div class="sec"><h2>Habis ke mana aja</h2><span class="note num">${k(total)}</span></div>`;
-  h += ids.length ? `<div class="box pad" style="display:flex;flex-direction:column;gap:12px">${ids.map(id => { const c = cat(id), p = by[id] / total * 100;
-    return `<div style="display:flex;flex-direction:column;gap:5px"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(c ? c.name : 'Tanpa kategori')}</b><span class="num"><b>${k(by[id])}</b> · ${Math.round(p)}%</span></div><div class="bar"><i style="width:${p}%;background:${avColor(c ? c.name : 'x')}"></i></div></div>`; }).join('')}</div>` : `<div class="box empty">Belum ada pengeluaran bulan ini.</div>`;
+  let h = header('Budget', MONTHS[+m.slice(5) - 1] + ' ' + m.slice(0, 4) + ' · ' + d.left + ' hari lagi', `<button class="pill" data-act="budget-edit">Ubah</button>`);
+  if (S.budget > 0) {
+    const sisa = S.budget - d.month, f = sisa / S.budget;
+    h += `<section class="jar-hero">${jarSvg('jm', f, 170, true, f < 0.15)}
+      <span class="note">Sisa budget bulan ini</span>
+      <span class="big2 num">${sisa < 0 ? '−' : ''}${rp(Math.abs(sisa))}</span>
+      <span class="note num">dari ${rp(S.budget)} · <span style="color:var(--ink)">${k(Math.max(0, sisa) / d.left)} / hari</span></span></section>`;
+  } else h += `<div class="box pad form"><p class="note">Budget bulanan belum diatur. Dari angka ini Arus menghitung isi toples dan jatah harianmu.</p><button class="btn pri" data-act="budget-edit">Atur budget bulanan</button></div>`;
+
+  const cb = catBudgets(), jarCats = S.categories.filter(c => c.kind === 'expense' && cb[c.id] > 0);
+  h += `<div class="sec"><h2>Per kategori</h2><button class="link" data-act="catbudget-edit">${jarCats.length ? 'Atur' : '+ Atur budget kategori'}</button></div>`;
+  let low = null;
+  if (jarCats.length) {
+    h += `<div class="jar-grid">${jarCats.map(c => { const left = (cb[c.id] - (by[c.id] || 0)) / cb[c.id], warn = left < 0.15;
+      if (warn && (!low || left < low.left)) low = { c, left, over: (by[c.id] || 0) - cb[c.id] };
+      return `<button class="jar-cell" data-act="catbudget-edit" aria-label="${esc(c.name)}, sisa ${Math.max(0, Math.round(left * 100))} persen">${jarSvg('k' + c.id, left, 56, false, warn)}<span class="jn">${esc(c.name)}</span><span class="jp" style="color:${warn ? 'var(--bad)' : 'var(--muted)'}">${left < 0 ? 'lewat ' + k(-left * cb[c.id]) : 'sisa ' + Math.round(left * 100) + '%'}</span></button>`; }).join('')}</div>`;
+  } else h += `<div class="box pad note">Beri budget per kategori (misalnya Makan atau Date) supaya tiap kategori punya toplesnya sendiri.</div>`;
+
+  let line = null;
+  if (low) line = low.over > 0 ? `Toples ${esc(low.c.name)} sudah lewat ${k(low.over)}. Bulan ini mungkin cukup sampai di sini.` : `Toples <span style="color:var(--bad)">${esc(low.c.name)}</span> tinggal ${Math.max(0, Math.round(low.left * 100))}%. Pelan-pelan dulu di kategori ini.`;
+  else if (S.budget > 0) line = d.sisaBudget < 0 ? `Budget bulan ini sudah lewat ${k(-d.sisaBudget)}. Kita rapikan lagi bulan depan.` : d.sisaBudget / S.budget < 0.2 ? `Sisa budget tinggal sedikit untuk ${d.left} hari. Pilih yang penting saja.` : 'Masih aman. Pertahankan ritmenya.';
+  if (line) h += `<div class="cuki-line"><span class="cuki-av">${cuki(low || d.sisaBudget < 0 ? 'hampir' : 'aman', 38)}</span><p>${line}</p></div>`;
+
+  if (n) h += `<p class="note">Rata-rata pengeluaranmu ${n} bulan terakhir: <b class="num" style="color:var(--ink)">${rp(avg / n)}</b> per bulan.</p>`;
+  h += `<div class="sec"><h2>Habis ke mana saja</h2><span class="note num">${k(total)}</span></div>`;
+  h += ids.length ? `<div class="box pad" style="display:flex;flex-direction:column;gap:14px">${ids.map(id => { const c = cat(id), p = by[id] / total * 100;
+    return `<div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;gap:8px"><span>${esc(c ? c.name : 'Tanpa kategori')}</span><span class="num"><b style="font-weight:500">${k(by[id])}</b> <span class="note">· ${Math.round(p)}%</span></span></div><div class="bar"><i style="width:${p}%;background:var(--gold)"></i></div></div>`; }).join('')}</div>` : `<div class="box empty">Belum ada pengeluaran bulan ini.</div>`;
   return h;
+}
+function catBudgetForm() {
+  const cb = catBudgets();
+  openSheet('Budget per kategori', `<div class="form"><p class="note">Isi angka untuk kategori yang mau punya toples. Kosongkan untuk menghapus toplesnya.</p>
+  ${S.categories.filter(c => c.kind === 'expense').map(c => `<label for="cb-${c.id}">${esc(c.name)}<input id="cb-${c.id}" data-cb="${c.id}" inputmode="numeric" data-amt placeholder="0" value="${cb[c.id] ? nf.format(cb[c.id]) : ''}"></label>`).join('')}
+  <p class="note" id="cb-sum"></p><button class="btn pri" data-act="catbudget-save">Simpan</button></div>`);
 }
 
 function vPengaturan() {
@@ -551,7 +607,9 @@ document.addEventListener('click', ev => {
     case 'tx-save': saveTx(); break;
     case 'tx-del': confirmBox('Hapus transaksi ini?', 'Hapus').then(ok => { if (!ok) return; S.transactions = S.transactions.filter(x => x.id !== D.id); closeSheet(); commit(); toast('Dihapus.'); }); break;
     case 'budget-edit': openSheet('Budget bulanan', `<div class="form"><div class="amtin"><span>Rp</span><input id="b-amt" inputmode="numeric" data-amt value="${S.budget ? nf.format(S.budget) : ''}" aria-label="Budget bulanan"></div><p class="note">Batas total pengeluaran sebulan (di luar tabungan, investasi, dan transfer antar akun).</p><button class="btn pri" data-act="budget-save">Simpan</button></div>`); break;
-    case 'budget-save': S.budget = parseAmt($('#b-amt').value); closeSheet(); commit(); toast('Budget disimpan. Jatah harian dihitung ulang.'); break;
+    case 'catbudget-edit': catBudgetForm(); break;
+    case 'catbudget-save': { const cb = {}; document.querySelectorAll('[data-cb]').forEach(e => { const v = parseAmt(e.value); if (v > 0) cb[e.dataset.cb] = v; }); S.catBudget = cb; closeSheet(); commit(); toast('Toples kategori diperbarui.'); break; }
+    case 'budget-save': S.budget = parseAmt($('#b-amt').value); closeSheet(); commit(); toast('Budget disimpan. Toples dan jatah harian ikut menyesuaikan.'); break;
     case 'acc-edit': accForm(acc(id)); break;
     case 'acc-new': accForm(null); break;
     case 'acc-save': accSave(id); break;
