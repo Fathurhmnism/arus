@@ -585,11 +585,16 @@ function vBudget() {
     return `<div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;gap:8px"><span>${esc(c ? c.name : 'Uncategorized')}</span><span class="num"><b style="font-weight:500">${k(by[id])}</b> <span class="note">· ${Math.round(p)}%</span></span></div><div class="bar"><i style="width:${p}%;background:var(--gold)"></i></div></div>`; }).join('')}</div>` : `<div class="box empty">No spending this month yet.</div>`;
   return h;
 }
+const NEW_CB_ROW = () => `<div class="row2 cb-new"><label>New category<input data-cbn-name maxlength="28" placeholder="e.g. Barber"></label><label>Budget<input data-cbn-amt inputmode="numeric" data-amt placeholder="0"></label></div>`;
 function catBudgetForm() {
   const cb = catBudgets();
   openSheet('Category budgets', `<div class="form"><p class="note">Enter an amount for each category that should have a jar. Leave it empty to remove the jar.</p>
   ${S.categories.filter(c => c.kind === 'expense').map(c => `<label for="cb-${c.id}">${esc(c.name)}<input id="cb-${c.id}" data-cb="${c.id}" inputmode="numeric" data-amt placeholder="0" value="${cb[c.id] ? nf.format(cb[c.id]) : ''}"></label>`).join('')}
+  <div id="cb-new-list">${NEW_CB_ROW()}</div>
+  <button class="btn sm" data-act="cb-addrow" style="align-self:flex-start">+ Another new category</button>
   <p class="note" id="cb-sum"></p><button class="btn pri" data-act="catbudget-save">Save</button></div>`);
+  const sum = () => { let t = 0; document.querySelectorAll('[data-cb],[data-cbn-amt]').forEach(e => t += parseAmt(e.value)); const el = $('#cb-sum'); if (el) el.textContent = t ? `Total across jars: ${rp(t)}${S.budget ? ` · monthly budget ${rp(S.budget)}` : ''}` : ''; };
+  $('#sheet').addEventListener('input', sum); sum();
 }
 
 function vPengaturan() {
@@ -742,7 +747,11 @@ document.addEventListener('click', ev => {
     case 'asset-save': assetSave(el.dataset.acc, id); break;
     case 'asset-del': confirmBox('Delete this asset?', 'Delete').then(ok => { if (!ok) return; const a = acc(el.dataset.acc); a.assets = a.assets.filter(y => y.id !== id); closeSheet(); commit(); toast('Asset deleted.'); }); break;
     case 'catbudget-edit': catBudgetForm(); break;
-    case 'catbudget-save': { const cb = {}; document.querySelectorAll('[data-cb]').forEach(e => { const v = parseAmt(e.value); if (v > 0) cb[e.dataset.cb] = v; }); S.catBudget = cb; closeSheet(); commit(); toast('Category jars updated.'); break; }
+    case 'cb-addrow': { const w = document.createElement('div'); w.innerHTML = NEW_CB_ROW(); const row = w.firstElementChild; $('#cb-new-list').appendChild(row); row.querySelectorAll('[data-amt]').forEach(bindAmt); row.querySelector('input').focus(); break; }
+    case 'catbudget-save': { const cb = {}; document.querySelectorAll('[data-cb]').forEach(e => { const v = parseAmt(e.value); if (v > 0) cb[e.dataset.cb] = v; });
+      let added = 0; document.querySelectorAll('.cb-new').forEach(r => { const name = r.querySelector('[data-cbn-name]').value.trim(), v = parseAmt(r.querySelector('[data-cbn-amt]').value); if (!name) return;
+        let c = S.categories.find(x => x.kind === 'expense' && norm(x.name) === norm(name)); if (!c) { c = { id: uid(), name, kind: 'expense', kw: [norm(name)] }; S.categories.push(c); added++; } if (v > 0) cb[c.id] = v; });
+      S.catBudget = cb; closeSheet(); commit(); toast(added ? `${added} new categor${added > 1 ? 'ies' : 'y'} added. Jars updated.` : 'Category jars updated.'); break; }
     case 'budget-save': S.budget = parseAmt($('#b-amt').value); closeSheet(); commit(); toast('Budget saved. Jars and daily allowance updated.'); break;
     case 'acc-edit': accForm(acc(id)); break;
     case 'acc-new': accForm(null); break;
