@@ -634,6 +634,8 @@ const wlToGo = () => wlActive().reduce((s, x) => s + Math.max(0, (x.price || 0) 
 const DEBT_TYPES = { owed: ['They owe me', 'Owes you'], owe: ['I owe', 'You owe'], self: ['I owe myself', 'Owed to yourself'] };
 const debtPaid = d => (d.payments || []).reduce((s, p) => s + p.amount, 0);
 const debtLeft = d => Math.max(0, d.amount - debtPaid(d));
+const isItem = d => !d.amount;
+const isOpen = d => isItem(d) ? !d.settled : debtLeft(d) > 0;
 const daysTo = s => Math.round((new Date(s + 'T00:00:00') - new Date(today() + 'T00:00:00')) / 864e5);
 function dueText(d) { if (!d.due || !debtLeft(d)) return ''; const n = daysTo(d.due); return n < 0 ? `${-n} day${n < -1 ? 's' : ''} overdue` : n === 0 ? 'Due today' : `Due in ${n} day${n > 1 ? 's' : ''}`; }
 const dueSoon = () => DEBTS().filter(d => debtLeft(d) > 0 && d.due && daysTo(d.due) <= 3).sort((a, b) => a.due.localeCompare(b.due));
@@ -717,11 +719,12 @@ function vDebts() {
   let h = header('Debts', 'Lent, borrowed and owed to yourself', plus, true);
   h += `<div class="tiles"><div class="tile"><span>They owe you</span><b class="num plus">${rp(owedToMe)}</b></div><div class="tile"><span>You owe</span><b class="num">${rp(iOwe + self)}</b>${self ? `<span class="num">incl. ${k(self)} to yourself</span>` : ''}</div></div>`;
   h += `<div class="seg">${Object.keys(DEBT_TYPES).map(t => `<button data-act="debt-tab" data-v="${t}" aria-pressed="${debtTab === t}">${t === 'owed' ? 'Owed to me' : t === 'owe' ? 'I owe' : 'Myself'}</button>`).join('')}</div>`;
-  const list = DEBTS().filter(d => d.type === debtTab), open = list.filter(d => debtLeft(d) > 0).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999')), done = list.filter(d => !debtLeft(d));
+  const list = DEBTS().filter(d => d.type === debtTab), open = list.filter(isOpen).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999')), done = list.filter(d => !isOpen(d));
   const row = d => { const dt = dueText(d), late = d.due && debtLeft(d) && daysTo(d.due) <= 3;
-    return `<button class="row" data-act="debt-open" data-id="${d.id}"><span class="av" style="background:${avColor(d.person)}">${esc(initials(d.person))}</span><span class="m"><b>${esc(d.person)}</b><span>${[d.note, dt ? `<span style="color:${late ? 'var(--bad)' : 'var(--muted)'}">${dt}</span>` : ''].filter(Boolean).join(' · ')}</span></span><span class="v num ${d.type === 'owed' ? 'plus' : ''}">${rp(debtLeft(d) || d.amount)}<small>${debtLeft(d) ? (debtPaid(d) ? `of ${k(d.amount)}` : 'left') : 'settled'}</small></span></button>`; };
+    return `<button class="row" data-act="debt-open" data-id="${d.id}"><span class="av" style="background:${avColor(d.person)}">${esc(initials(d.person))}</span><span class="m"><b>${esc(d.person)}</b><span>${[d.note, dt ? `<span style="color:${late ? 'var(--bad)' : 'var(--muted)'}">${dt}</span>` : ''].filter(Boolean).join(' · ')}</span></span><span class="v num ${d.type === 'owed' ? 'plus' : ''}">${isItem(d) ? `Item<small>${isOpen(d) ? 'not money' : 'settled'}</small>` : `${rp(debtLeft(d) || d.amount)}<small>${debtLeft(d) ? (debtPaid(d) ? `of ${k(d.amount)}` : 'left') : 'settled'}</small>`}</span></button>`; };
   h += open.length ? `<div class="box list">${open.map(row).join('')}</div>` : `<div class="box empty">${debtTab === 'owed' ? 'Nobody owes you anything right now.' : debtTab === 'owe' ? 'You owe nobody. Lovely.' : 'Nothing borrowed from your own savings.'}</div>`;
   if (done.length) h += `<div class="sec"><h2>Settled</h2></div><div class="box list">${done.slice(0, 10).map(row).join('')}</div>`;
+  h += `<button class="btn sm" data-act="debt-paste" style="align-self:flex-start">Paste from Notes</button>`;
   h += `<p class="note">Debt payments change your account balances but never count as spending or income in your budget.</p>`;
   return h;
 }
@@ -744,6 +747,8 @@ function debtForm(d, fresh) {
   $('#sheet').dataset.debtType = d.type;
 }
 function debtSheet(d) {
+  if (isItem(d)) return openSheet(d.person, `<div class="form"><div><span class="note">${DEBT_TYPES[d.type][1]}</span><div class="big2" style="font-size:30px">${esc(d.note || 'Item')}</div><span class="note">Not money · ${d.settled ? 'settled' : 'still open'}</span></div>
+    <div class="btnrow"><button class="btn" data-act="debt-edit" data-id="${d.id}">Edit</button><button class="btn pri" style="flex:1" data-act="debt-settle" data-id="${d.id}">${d.settled ? 'Reopen' : 'Mark as settled'}</button></div></div>`);
   const left = debtLeft(d), dir = d.type === 'owed' ? 'Received into' : d.type === 'owe' ? 'Paid from' : 'Paid back from';
   const hist = (d.payments || []).slice().sort((a, b) => b.date.localeCompare(a.date));
   openSheet(d.person, `<div class="form">
@@ -753,8 +758,60 @@ function debtSheet(d) {
     ${d.type === 'self' ? `<div class="lab">Back into (optional)</div>${accPicker('dp-to', true, 'Same place')}` : ''}
     <p class="err" id="dp-err"></p>
     <button class="btn pri" data-act="debt-pay" data-id="${d.id}">${d.type === 'owed' ? 'Record payment' : 'Pay'}</button>` : `<p class="note" style="color:var(--good)">Fully settled.</p>`}
-    ${hist.length ? `<div class="sec"><h2>Payments</h2></div><div class="box list">${hist.map(p => `<div class="row"><span class="m"><b class="num">${rp(p.amount)}</b><span>${esc(dateLabel(p.date))}${acc(p.accountId) ? ' · ' + esc(acc(p.accountId).name) : ' · not recorded'}</span></span><button class="btn sm" data-act="debt-unpay" data-id="${d.id}" data-pid="${p.id}">Undo</button></div>`).join('')}</div>` : ''}
+    ${hist.length ? `<div class="sec"><h2>Payments</h2></div><div class="box list">${hist.map(p => `<div class="row"><span class="m"><b class="num">${rp(p.amount)}</b><span>${esc(dateLabel(p.date))}${acc(p.accountId) ? ' · ' + esc(acc(p.accountId).name) : p.note ? ' · ' + esc(p.note) : ' · not recorded'}</span></span><button class="btn sm" data-act="debt-unpay" data-id="${d.id}" data-pid="${p.id}">Undo</button></div>`).join('')}</div>` : ''}
     <div class="btnrow"><button class="btn" data-act="debt-edit" data-id="${d.id}">Edit</button></div></div>`);
+}
+/* tempel catatan hutang: bagian "I owe" / "I owe myself" / "They owe", baris "nama : 25 + 47,3 - 27" (minus = pembayaran) */
+const kk = v => v >= 1e6 ? k(v) : 'Rp' + (v / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 }) + 'K';
+const MY_SHARE = /punya ?gu|punya ?gue|punyaku|bagian ?(gu|gue|ku|saya)|my share/i;
+function numTok(t) {
+  t = t.trim(); if (!/^\d[\d.,]*$/.test(t)) return null;
+  if (/^\d{1,3}(\.\d{3})+$/.test(t)) return +t.replace(/\./g, '');
+  if (/^\d{1,3}(,\d{3})+$/.test(t)) return +t.replace(/,/g, '');
+  const v = parseFloat(t.replace(',', '.')); if (isNaN(v)) return null;
+  return v < 1000 ? Math.round(v * 1000) : Math.round(v);   // "47,3" di catatan = Rp47.300
+}
+function parseDebtNotes(txt) {
+  const out = []; let type = null;
+  for (let raw of String(txt || '').split(/\n/)) {
+    const line = raw.trim(); if (!line) continue;
+    if (/^i owe (my ?self|myself)\b/i.test(line)) { type = 'self'; continue; }
+    if (/^i owe\b/i.test(line)) { type = 'owe'; continue; }
+    if (/^they owe\b/i.test(line)) { type = 'owed'; continue; }
+    if (!type) { out.push({ line, skip: 'Add a heading first: "I owe", "I owe myself" or "They owe"' }); continue; }
+    let name, expr; const c = line.indexOf(':');
+    if (c > 0) { name = line.slice(0, c).trim(); expr = line.slice(c + 1).trim(); }
+    else { const m = line.match(/^(.*?)\s*(\d[\d.,]*(?:\s*[+-]\s*\d[\d.,]*)*)$/); name = m ? m[1].trim() : line; expr = m ? m[2] : ''; }
+    const parts = expr.split(/\s*([+-])\s*/), plus = [], minus = [], items = []; let sign = '+', share = false;
+    for (const p of parts) { if (p === '+' || p === '-') { sign = p; continue; } if (!p) continue; const v = numTok(p);
+      if (v == null) { if (sign === '-' && MY_SHARE.test(p)) share = true; else items.push(p.trim()); }
+      else (sign === '+' ? plus : minus).push(v); sign = '+'; }
+    const sumP = plus.reduce((a, b) => a + b, 0), sumM = minus.reduce((a, b) => a + b, 0);
+    if (!name && sumP) {  // baris angka saja: subtotal atau pos tanpa nama
+      const prev = out.filter(x => x.type === type && !x.skip && !x.subtotalCheck).reduce((a, x) => a + (x.amount || 0), 0), recent = []; let acc2 = 0;
+      for (let i = out.length - 1; i >= 0 && out[i].type === type && !out[i].skip; i--) { acc2 += out[i].amount || 0; recent.push(acc2); }
+      if (recent.some(v => Math.abs(v - sumP) <= Math.max(50000, sumP * 0.01)) || Math.abs(prev - sumP) <= Math.max(50000, sumP * 0.01)) { out.push({ line, skip: `Looks like a subtotal (${rp(sumP)}), skipped` }); continue; }
+      name = 'Untitled';
+    }
+    let amount = sumP, payments = minus.slice(), warn = [];
+    if (share) { const people = name.split(/\s*[,&]\s*|\s+dan\s+/i).filter(Boolean).length; amount = Math.round(sumP * people / (people + 1)); warn.push(`Split ${people + 1} ways; your share ${rp(sumP - amount)} left out`); }
+    if (payments.reduce((a, b) => a + b, 0) > amount) { warn.push('Payments exceed the amount; kept as notes'); payments = []; }
+    if (name === 'Untitled') warn.push('No name in your notes');
+    if (/^\d{1,2}\s+(jan|feb|mar|apr|mei|may|jun|jul|agu|aug|sep|okt|oct|nov|des|dec)/i.test(name)) warn.push('Name looks like a date');
+    if (!amount && !items.length) { out.push({ line, skip: 'No amount found' }); continue; }
+    out.push({ line, type, person: name.replace(/\s*,\s*/g, ', ').replace(/\b\w/g, ch => ch.toUpperCase()), amount, payments, note: items.join(', ') + (plus.length > 1 && !share ? (items.length ? ' · ' : '') + plus.map(kk).join(' + ') : ''), warn: warn.join('. ') });
+  }
+  return out;
+}
+function debtPasteSheet() {
+  openSheet('Paste from Notes', `<div class="form"><label for="dn-txt">Paste your debt notes. Use the headings "I owe", "I owe myself" and "They owe". A minus means a payment.<textarea id="dn-txt" style="min-height:160px" placeholder="They owe\ntaki : 25 + 47,3 + 57 - 27"></textarea></label>
+    <div id="dn-prev"></div><button class="btn pri" data-act="debt-paste-save" disabled>Add debts</button></div>`);
+  const ta = $('#dn-txt'), prev = () => { const items = parseDebtNotes(ta.value), ok = items.filter(x => !x.skip);
+    const lab = { owed: 'They owe me', owe: 'I owe', self: 'Myself' };
+    $('#dn-prev').innerHTML = items.length ? `<div class="box list">${items.map(x => x.skip ? `<div class="row"><span class="m"><b style="color:var(--muted)">${esc(x.line)}</b><span>${esc(x.skip)}</span></span></div>`
+      : `<div class="row"><span class="m"><b>${esc(x.person)}</b><span>${lab[x.type]}${x.note ? ' · ' + esc(x.note) : ''}${x.payments.length ? ` · paid ${x.payments.map(kk).join(' + ')}` : ''}${x.warn ? `<br><span style="color:var(--bad)">${esc(x.warn)}</span>` : ''}</span></span><span class="v num">${x.amount ? rp(x.amount - x.payments.reduce((a, b) => a + b, 0)) : 'Item'}${x.amount && x.payments.length ? `<small>of ${k(x.amount)}</small>` : ''}</span></div>`).join('')}</div>` : '';
+    const btn = $('#sheet [data-act=debt-paste-save]'); btn.disabled = !ok.length; btn.textContent = ok.length ? `Add ${ok.length} debt${ok.length > 1 ? 's' : ''}` : 'Add debts'; };
+  ta.addEventListener('input', prev);
 }
 function debtTx(d, amount, accountId, dirIn, date) {
   const t = { id: uid(), date: date || today(), time: tstr(new Date()), type: dirIn ? 'income' : 'expense', amount, accountId, note: '', merchant: d.person, source: 'debt', debt: d.id, created: Date.now() };
@@ -887,11 +944,17 @@ document.addEventListener('click', ev => {
     /* debts */
     case 'debt-tab': debtTab = el.dataset.v; render(); break;
     case 'debt-new': debtForm(null); break;
+    case 'debt-paste': debtPasteSheet(); break;
+    case 'debt-paste-save': { const items = parseDebtNotes($('#dn-txt').value).filter(x => !x.skip);
+      items.forEach(x => DEBTS().push({ id: uid(), type: x.type, person: x.person, amount: x.amount, note: x.note, due: '', created: Date.now(), source: 'notes',
+        payments: x.payments.map(v => ({ id: uid(), date: today(), amount: v, accountId: '', note: 'from notes' })) }));
+      if (items.length) debtTab = items[0].type; closeSheet(); commit(); toast(`${items.length} debt${items.length > 1 ? 's' : ''} added.`); break; }
+    case 'debt-settle': { const d = DEBTS().find(x => x.id === id); if (!d) break; d.settled = !d.settled; commit(); debtSheet(d); break; }
     case 'debt-type': { const keep = { type: el.dataset.v, person: $('#db-person').value, amount: parseAmt($('#db-amt').value), note: $('#db-note').value, due: $('#db-due').value }; debtForm(keep, true); break; }
     case 'debt-open': { const d = DEBTS().find(x => x.id === id); if (d) debtSheet(d); break; }
     case 'debt-edit': debtForm(DEBTS().find(x => x.id === id)); break;
     case 'debt-save': { const type = $('#sheet').dataset.debtType || debtTab, person = $('#db-person').value.trim(), amount = parseAmt($('#db-amt').value);
-      if (!person) { $('#db-err').textContent = type === 'self' ? 'What was it for?' : 'Who is it?'; break; } if (!amount) { $('#db-err').textContent = 'Please enter the amount.'; break; }
+      if (!person) { $('#db-err').textContent = type === 'self' ? 'What was it for?' : 'Who is it?'; break; } if (!amount && !$('#db-note').value.trim()) { $('#db-err').textContent = 'Enter an amount, or describe the item in the note.'; break; }
       const data = { person, amount, note: $('#db-note').value.trim(), due: $('#db-due').value || '' };
       if (id) { const d = DEBTS().find(x => x.id === id); Object.assign(d, data); }
       else { const d = Object.assign({ id: uid(), type, created: Date.now(), payments: [] }, data); const accId = $('#db-acc') ? picked('db-acc') : '';
