@@ -1,6 +1,6 @@
 # Arus
 
-Tracker keuangan pribadi untuk iPhone, ditemani Cuki. Data hanya tersimpan di perangkat (localStorage Safari). Tanpa server, tanpa login.
+Tracker keuangan pribadi untuk iPhone, ditemani Cuki. v2 "Premium gelap": dompet kartu, toples budget, investasi per aset. Data hanya tersimpan di perangkat (localStorage Safari). Tanpa server, tanpa login.
 
 - `index.html`: tampilan dan gaya
 - `app.js`: logika aplikasi

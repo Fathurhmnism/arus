@@ -200,19 +200,10 @@ nav.tabs .add svg{width:22px;height:22px}
 .cuki-line p{margin:0;font-size:14px;color:var(--soft);line-height:1.45}
 .menu .row svg{width:22px;height:22px;color:var(--soft);flex:none}
 .menu .row .go{color:var(--muted)}
-@keyframes cuki-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
-@keyframes cuki-twinkle{0%,100%{opacity:.15;transform:scale(.5)}50%{opacity:1;transform:scale(1)}}
-@keyframes cuki-shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-3px)}40%{transform:translateX(3px)}60%{transform:translateX(-2px)}80%{transform:translateX(2px)}}
-@keyframes cuki-drip{0%{transform:translateY(0);opacity:0}15%{opacity:1}80%{transform:translateY(18px);opacity:1}100%{transform:translateY(22px);opacity:0}}
-@keyframes cuki-soul{0%{transform:translateY(10px);opacity:0}25%{opacity:1}100%{transform:translateY(-14px);opacity:0}}
-@keyframes cuki-wobble{0%,100%{transform:rotate(-10deg)}50%{transform:rotate(-6deg)}}
-.cuki-bounce{animation:cuki-bounce 1.1s ease-in-out infinite}
-.cuki-spark{transform-box:fill-box;transform-origin:center;animation:cuki-twinkle 1.4s ease-in-out infinite}
-.cuki-spark.d2{animation-delay:.45s}.cuki-spark.d3{animation-delay:.9s}
-.cuki-shake{animation:cuki-shake .9s ease-in-out infinite}
-.cuki-drip{animation:cuki-drip 1.3s ease-in infinite}.cuki-drip.d2{animation-delay:.65s}
-.cuki-soul{animation:cuki-soul 2.2s ease-out infinite}
-.cuki-body{transform-box:fill-box;transform-origin:50% 100%;animation:cuki-wobble 2.4s ease-in-out infinite}
+@keyframes cuki-calm{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+@keyframes cuki-sigh{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(1px) rotate(-2deg)}}
+.cuki-calm{animation:cuki-calm 4s ease-in-out infinite}
+.cuki-sigh{transform-origin:50% 100%;animation:cuki-sigh 5s ease-in-out infinite}
 @media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
 </style>
 </head>
