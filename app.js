@@ -236,7 +236,7 @@ function vOnboarding() {
   <div class="hero"><div class="who">${cuki('aman')}<div class="bubble">Saya Cuki, asisten dompetmu. Isi dua hal ini dulu, sisanya bisa menyusul.</div></div></div>
   <div class="box pad form">
     <label for="ob-name">Panggil kamu siapa?<input id="ob-name" value="${esc(S.name)}" maxlength="20"></label>
-    <label for="ob-budget">Budget pengeluaran per bulan<div class="amtin"><span>Rp</span><input id="ob-budget" inputmode="numeric" placeholder="mis. 3.000.000" value="${S.budget ? nf.format(S.budget) : ''}"></div></label>
+    <label for="ob-budget">Budget pengeluaran per bulan<div class="amtin"><span>Rp</span><input id="ob-budget" inputmode="numeric" placeholder="0" value="${S.budget ? nf.format(S.budget) : ''}"></div></label>
     <p class="note">Batas belanja bulananmu (di luar tabungan dan investasi). Dari angka ini Arus menghitung toples dan jatah harian. Belum yakin? Isi perkiraan dulu, bisa diubah kapan saja.</p>
   </div>
   <div class="box pad form"><div class="lab">Saldo sekarang di tiap akun (opsional)</div>
