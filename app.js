@@ -657,6 +657,7 @@ function vWishlist() {
     return `<button class="wl-item" data-act="wl-open" data-id="${x.id}">${jarSvg('w' + x.id, Math.min(1, f), 52, false, false)}<span class="m"><b>${esc(x.name)}</b><span class="note num">${rp(x.price)}</span><span class="bar"><i style="width:${Math.min(100, f * 100)}%;background:var(--gold)"></i></span></span><span class="v num">${left ? `${k(left)}<small>to go</small>` : `<span style="color:var(--good)">Ready</span><small>fully saved</small>`}</span></button>`; }).join('')}</div>`
     : `<div class="box empty">Nothing here yet. Tap <b>+</b> to add something you'd like to buy.</div>`;
   if (bought.length) h += `<div class="sec"><h2>Bought</h2></div><div class="box list">${bought.slice(0, 10).map(x => `<button class="row" data-act="wl-open" data-id="${x.id}"><span class="m"><b>${esc(x.name)}</b><span>${esc(dateLabel(x.bought.date))}${acc(x.bought.accountId) ? ' · ' + esc(acc(x.bought.accountId).name) : ''}</span></span><span class="v num">${rp(x.bought.amount)}</span></button>`).join('')}</div>`;
+  h += `<button class="btn sm" data-act="wl-paste" style="align-self:flex-start">Paste from Notes</button>`;
   h += `<p class="note">Setting money aside only marks it in Penny. It stays in your bank and is still part of your wallet total.</p>`;
   return h;
 }
@@ -686,6 +687,24 @@ function wlSheet(x) {
     <p class="note">Recorded as an expense${shop ? ' in ' + esc(shop.name) : ''}, and the money set aside is released.</p>
     <p class="err" id="wl-err"></p>
     <div class="btnrow"><button class="btn" data-act="wl-edit" data-id="${x.id}">Edit</button><button class="btn pri" style="flex:1" data-act="wl-buy" data-id="${x.id}">Mark as bought</button></div></div>`);
+}
+
+/* tempel daftar dari Notes: satu barang per baris, "nama : harga" */
+function parseWishLines(txt) {
+  return String(txt || '').split(/\n+/).map(l => l.trim()).filter(Boolean).map(line => {
+    const m = line.match(/^(.*?)[\s:=\-–—]+(?:rp\.?\s*)?([\d][\d.,\s]*)$/i);
+    if (!m) return { line, name: line, price: 0, warn: 'No price found' };
+    const raw = m[2].replace(/\s/g, ''), groups = raw.split(/[.,]/), odd = groups.length > 1 && groups.slice(1).some(g => g.length !== 3);
+    return { line, name: m[1].replace(/[\s:=\-–—]+$/, '').trim(), price: parseInt(raw.replace(/\D/g, ''), 10) || 0, warn: odd ? `Check the price "${raw}"` : '' };
+  });
+}
+function wlPasteSheet() {
+  openSheet('Paste from Notes', `<div class="form"><label for="wl-paste-txt">One item per line, like "MacBook Air : 24.000.000"<textarea id="wl-paste-txt" placeholder="iPhone 18 Pro : 28.000.000"></textarea></label>
+    <div id="wl-paste-prev"></div><button class="btn pri" data-act="wl-paste-save" disabled>Add to wishlist</button></div>`);
+  const ta = $('#wl-paste-txt'), prev = () => { const items = parseWishLines(ta.value), ok = items.filter(x => x.name && x.price);
+    $('#wl-paste-prev').innerHTML = items.length ? `<div class="box list">${items.map(x => `<div class="row"><span class="m"><b>${esc(x.name || x.line)}</b>${x.warn ? `<span style="color:var(--bad)">${esc(x.warn)}</span>` : ''}</span><span class="v num">${x.price ? rp(x.price) : '—'}</span></div>`).join('')}</div><p class="note num">${ok.length} item${ok.length === 1 ? '' : 's'} · ${rp(ok.reduce((s2, x) => s2 + x.price, 0))}</p>` : '';
+    const btn = $('#sheet [data-act=wl-paste-save]'); btn.disabled = !ok.length; btn.textContent = ok.length ? `Add ${ok.length} to wishlist` : 'Add to wishlist'; };
+  ta.addEventListener('input', prev);
 }
 
 /* debts */
@@ -844,6 +863,10 @@ document.addEventListener('click', ev => {
     case 'pick': el.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === el))); break;
     /* wishlist */
     case 'wl-new': wlForm(null); break;
+    case 'wl-paste': wlPasteSheet(); break;
+    case 'wl-paste-save': { const items = parseWishLines($('#wl-paste-txt').value).filter(x => x.name && x.price); let n = WL().length;
+      items.forEach(x => WL().push({ id: uid(), name: x.name, price: x.price, saved: 0, link: '', note: '', created: Date.now(), order: n++ }));
+      closeSheet(); commit(); toast(`${items.length} item${items.length === 1 ? '' : 's'} added to your wishlist.`); break; }
     case 'wl-edit': wlForm(WL().find(x => x.id === id)); break;
     case 'wl-open': { const x = WL().find(y => y.id === id); if (x) wlSheet(x); break; }
     case 'wl-save': { const name = $('#wl-name').value.trim(), price = parseAmt($('#wl-price').value);
