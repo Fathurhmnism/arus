@@ -643,15 +643,10 @@ const ICON = {
 };
 const ic24 = p => `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
 function featuresHome() {
-  const owedToMe = DEBTS().filter(d => d.type === 'owed').reduce((s, d) => s + debtLeft(d), 0);
-  const iOwe = DEBTS().filter(d => d.type !== 'owed').reduce((s, d) => s + debtLeft(d), 0);
-  const tiles = [
-    ['wishlist', ICON.wish, 'Wishlist', wlActive().length ? `${k(wlToGo())} to go` : 'Things to buy'],
-    ['debts', ICON.debt, 'Debts', owedToMe || iOwe ? (owedToMe ? `Owed ${k(owedToMe)}` : `You owe ${k(iOwe)}`) : 'Lent & borrowed']
-  ];
-  return `<div class="sec"><h2>Features</h2></div><div class="feat">${tiles.map(([to, i, t, sub]) => `<button class="ft" data-act="go" data-to="${to}"><span class="fi">${ic24(i)}</span><b>${t}</b><span class="note num">${esc(sub)}</span></button>`).join('')}</div>`;
+  const dot = dueSoon().length > 0;
+  const tiles = [['wishlist', ICON.wish, 'Wishlist', false], ['debts', ICON.debt, 'Debts', dot]];
+  return `<div class="feat" aria-label="Features">${tiles.map(([to, i, t, d]) => `<button class="ft" data-act="go" data-to="${to}"><span class="fi">${ic24(i)}${d ? '<i class="dot" aria-label="due soon"></i>' : ''}</span><span class="fl">${t}</span></button>`).join('')}</div>`;
 }
-
 /* wishlist */
 function vWishlist() {
   const act = wlActive().slice().sort((a, b) => (a.order || 0) - (b.order || 0)), bought = WL().filter(x => x.bought).sort((a, b) => b.bought.date.localeCompare(a.bought.date));
