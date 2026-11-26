@@ -141,6 +141,48 @@ nav.tabs .add svg{width:22px;height:22px}
 .dialog p{margin:0 0 16px;line-height:1.45}
 .dialog .btnrow{justify-content:flex-end}
 .onb{display:flex;flex-direction:column;gap:16px}
+/* dompet */
+.top .hi{display:flex;align-items:center;gap:12px}
+.cuki-av{width:46px;height:46px;border-radius:50%;background:var(--paper2);border:1px solid var(--line2);display:flex;align-items:flex-end;justify-content:center;overflow:hidden;flex:none}
+.wallet-stage{position:relative;margin-top:4px;overflow:hidden;padding-top:0;transition:height .5s cubic-bezier(.2,.9,.25,1.1)}
+.wallet-stage .card,.wallet-stage .wallet,.wallet-stage .card-detail{position:absolute;transition:top .55s cubic-bezier(.2,.9,.25,1.12),left .45s ease,right .45s ease,opacity .3s ease}
+.wallet-stage.noanim,.wallet-stage.noanim *{transition:none !important}
+.card{left:0;right:0;height:206px;border-radius:16px;overflow:hidden;padding:14px 18px;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;gap:8px;text-align:left;border:1px solid var(--edge,rgba(255,255,255,.12));box-shadow:0 -6px 16px rgba(0,0,0,.5),0 18px 36px rgba(0,0,0,.4);color:var(--ink);background:var(--skin)}
+.c-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.c-name{font-size:13px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--acc,var(--gold2))}
+.c-bal{font-size:13px;color:#D3D8E2}
+.c-sub{display:flex;align-items:center;gap:10px}
+.c-no{font-size:10px;letter-spacing:.18em;color:var(--acc,var(--gold2));opacity:.8}
+.c-chip{display:none;width:34px;height:26px;border-radius:5px;background:linear-gradient(135deg,#ECD49A,#B48A43);box-shadow:inset 0 0 0 1px rgba(0,0,0,.25);flex:none}
+.card.front .c-chip{display:block}
+.card-detail{left:0;right:0;opacity:0;visibility:hidden;pointer-events:none;display:flex;flex-direction:column;gap:8px}
+.card-detail.on{opacity:1;visibility:visible;pointer-events:auto}
+.card-detail .list{padding:0}
+.wallet{left:0;right:0;height:150px;z-index:20;border-radius:22px;background:#4A2F20;background-image:radial-gradient(circle at 30% 20%,rgba(255,255,255,.07),transparent 60%),radial-gradient(rgba(0,0,0,.18) 1px,transparent 1.2px);background-size:auto,4px 4px;box-shadow:0 -12px 26px rgba(0,0,0,.5),0 18px 40px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.08)}
+.wallet::before{content:"";position:absolute;inset:8px;border:1px dashed rgba(201,169,110,.45);border-radius:16px;pointer-events:none}
+.w-clasp{position:absolute;right:22px;top:22px;width:34px;height:22px;border-radius:6px;background:var(--gold);box-shadow:inset 0 -2px 0 rgba(0,0,0,.25)}
+.w-total{position:absolute;left:24px;bottom:22px;display:flex;flex-direction:column}
+.w-total span{font-size:12px;color:rgba(243,239,231,.7)}
+.w-total b{font-family:var(--serif);font-weight:400;font-size:40px;line-height:1.1;margin-top:4px}
+.ew-row{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(76px,1fr);gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 0 4px}
+.ew-row::-webkit-scrollbar{display:none}
+.ewc{height:118px;border-radius:12px;overflow:hidden;padding:10px 9px;display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;background:var(--skin);border:1px solid var(--edge,rgba(255,255,255,.12));color:#E4E6EB;box-shadow:0 8px 18px rgba(0,0,0,.4)}
+.ewc .c-name{font-size:9px;letter-spacing:.16em}
+.ewc .num{font-size:12px}
+.ewc .c-chip{display:block;width:20px;height:15px;border-radius:3px;margin-top:auto}
+.ew-wrap,#rest{display:flex;flex-direction:column;gap:12px;transition:opacity .3s ease}
+.dim{opacity:0;pointer-events:none}
+/* bahan kartu: dasar gelap + aksen warna bank (desain orisinal, tanpa logo) */
+.skin-bca{--acc:#D6B676;--edge:rgba(214,182,118,.40);--skin:repeating-radial-gradient(circle at 92% -20%,rgba(214,182,118,.26) 0 .8px,transparent 1.2px 6px),repeating-radial-gradient(circle at 60% -60%,rgba(214,182,118,.12) 0 .8px,transparent 1.2px 8px),linear-gradient(135deg,#13284F 0%,#0A1834 45%,#050C1C 100%)}
+.skin-bri{--acc:#E2C68E;--edge:rgba(201,169,110,.60);--skin:repeating-linear-gradient(90deg,rgba(255,255,255,.045) 0 1px,transparent 1px 3px),linear-gradient(115deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.10) 48%,rgba(255,255,255,0) 62%),linear-gradient(160deg,#1B3263 0%,#0F2147 55%,#0A1733 100%)}
+.skin-mandiri{--acc:#E6B94A;--edge:rgba(230,185,74,.40);--skin:linear-gradient(180deg,transparent 0 19%,rgba(230,185,74,.75) 19% 20%,transparent 20% 22.5%,rgba(230,185,74,.35) 22.5% 23%,transparent 23%),repeating-linear-gradient(90deg,rgba(255,255,255,.04) 0 1px,transparent 1px 3px),linear-gradient(150deg,#33373E 0%,#1E2126 55%,#141619 100%)}
+.skin-seabank{--acc:#F09450;--edge:rgba(240,148,80,.45);--skin:radial-gradient(circle at 18% -10%,rgba(240,148,80,.30),transparent 50%),radial-gradient(circle at 90% 100%,rgba(150,170,255,.10),transparent 50%),linear-gradient(125deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.08) 46%,rgba(255,255,255,0) 60%),linear-gradient(135deg,#2A2530 0%,#1C1A22 55%,#141319 100%)}
+.skin-jago{--acc:#E8A048;--edge:rgba(232,160,72,.45);--skin:linear-gradient(120deg,rgba(255,255,255,0) 35%,rgba(255,255,255,.07) 50%,rgba(255,255,255,0) 65%),repeating-linear-gradient(45deg,#18181A 0 3px,#212124 3px 6px)}
+.skin-gopay{--acc:#6FC39A;--edge:rgba(111,195,154,.35);--skin:linear-gradient(120deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.10) 48%,rgba(255,255,255,0) 62%),repeating-linear-gradient(90deg,rgba(255,255,255,.04) 0 1px,transparent 1px 3px),linear-gradient(160deg,#16382C 0%,#0D241C 60%,#08180F 100%)}
+.skin-ovo{--acc:#B9A3EE;--edge:rgba(185,163,238,.35);--skin:repeating-radial-gradient(circle at 85% 120%,rgba(185,163,238,.16) 0 .8px,transparent 1.2px 6px),linear-gradient(140deg,#2C1F4A 0%,#1A1230 60%,#110B20 100%)}
+.skin-shopeepay{--acc:#F0A070;--edge:rgba(240,160,112,.35);--skin:radial-gradient(circle at 15% 0%,rgba(240,160,112,.20),transparent 55%),linear-gradient(125deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.08) 46%,rgba(255,255,255,0) 60%),linear-gradient(140deg,#43231A 0%,#2A150F 60%,#1B0D09 100%)}
+.skin-dana{--acc:#8DB8F0;--edge:rgba(141,184,240,.35);--skin:repeating-linear-gradient(45deg,rgba(141,184,240,.06) 0 2px,transparent 2px 6px),linear-gradient(150deg,#14294A 0%,#0C1A32 60%,#081122 100%)}
+.skin-netral{--acc:#C9CBD0;--edge:rgba(255,255,255,.14);--skin:linear-gradient(120deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.06) 48%,rgba(255,255,255,0) 62%),linear-gradient(150deg,#2A2C31 0%,#1B1D21 60%,#121316 100%)}
 .menu .row svg{width:22px;height:22px;color:var(--soft);flex:none}
 .menu .row .go{color:var(--muted)}
 @keyframes cuki-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}

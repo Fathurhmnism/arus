@@ -244,35 +244,72 @@ function vOnboarding() {
   <div class="box pad form"><div class="lab">Udah pernah pakai Arus di tempat lain?</div><p class="note">Pulihkan dari file backup (.json), datamu balik semua.</p><button class="btn" data-act="restore">Pulihkan dari backup</button></div></div>`;
 }
 
+/* ---------- dompet ---------- */
+const CARD_SKIN = {
+  bca: 'bca', bri: 'bri', mandiri: 'mandiri', seabank: 'seabank', jago: 'jago',
+  gopay: 'gopay', ovo: 'ovo', shopeepay: 'shopeepay', dana: 'dana'
+};
+const skinOf = a => CARD_SKIN[norm(a.name).replace(/\s+/g, '')] || 'netral';
+const walletTotal = () => S.accounts.filter(a => a.kind === 'bank' || a.kind === 'ewallet').reduce((s, a) => s + accountValue(a), 0);
+const money = n => S.hideWealth ? 'Rp •••' : rp(n);
+const STEP = 44, CARD_H = 206, WALLET_H = 150;
+let selCard = null;
+function greet() { const h = new Date().getHours(); return h < 11 ? 'Selamat pagi' : h < 15 ? 'Selamat siang' : h < 19 ? 'Selamat sore' : 'Selamat malam'; }
+
 function vBeranda() {
-  const d = daily(), w = wealth();
-  const moodKey = S.budget <= 0 ? 'nobudget' : d.todaySpent === 0 ? 'nol' : d.mood;
-  const mood = moodKey === 'nol' || moodKey === 'nobudget' ? 'aman' : moodKey;
-  const C = COPY[moodKey];
+  const banks = S.accounts.filter(a => a.kind === 'bank'), ews = S.accounts.filter(a => a.kind === 'ewallet');
   const pend = S.inbox.filter(x => x.status === 'pending').length;
-  const pct = Math.min(100, Math.round(d.pct * 100));
-  const meterColor = d.mood === 'boncos' ? 'var(--pink)' : d.mood === 'hampir' ? 'var(--warn)' : 'var(--lime)';
-  const statusColor = moodKey === 'boncos' ? 'var(--bad)' : moodKey === 'hampir' ? 'var(--warn)' : 'var(--good)';
-  const now = new Date();
-  let h = header('Yo, ' + S.name + '!', DAYS[now.getDay()] + ' ' + pad(now.getDate()) + '.' + pad(now.getMonth() + 1),
-    `<button class="pill num" data-act="toggle-wealth" aria-label="Total kekayaan, ketuk untuk sembunyikan atau tampilkan">${S.hideWealth ? 'Rp•••' : k(w)}</button><button class="pill iconbtn" data-act="go" data-to="pengaturan" aria-label="Pengaturan"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>`);
-  if (!storageOK) h += `<div class="box pad note">Penyimpanan HP nggak bisa dipakai di mode ini (Private Browsing?). Data bakal hilang saat ditutup.</div>`;
-  h += `<section class="hero"><div class="who">${cuki(mood)}<div class="bubble">${esc(pick(C.bubble))}</div></div>
-    <span class="lbl">Hari ini udah keluar</span><span class="big num">${rp(d.todaySpent)}</span>`;
-  if (S.budget > 0) {
-    h += `<span class="sub">dari jatah harian ${k(d.jatah)}</span>
-    <div class="meter" role="img" aria-label="${pct}% jatah harian terpakai"><i style="width:${d.mood === 'boncos' ? 100 : pct}%;background:${meterColor}"></i>${d.mood === 'boncos' && d.jatah > 0 ? `<b>+${Math.round((d.pct - 1) * 100)}%</b>` : ''}</div>
-    <span class="status" style="color:${statusColor}">${esc(C.status(d))}</span>
-    <div class="tiles"><div class="tile"><span>Bulan ini keluar</span><b class="num">${k(d.month)}</b></div><div class="tile"><span>Sisa budget</span><b class="num">${k(d.sisaBudget)}</b></div></div>`;
-  } else h += `<button class="btn pri" data-act="budget-edit">Atur budget bulanan</button>`;
-  h += `</section>`;
-  h += pend ? `<button class="chip" data-act="go" data-to="kotak"><span>${d.mood === 'boncos' ? `${pend} transaksi di-ghosting. Kayak kamu ke mantan.` : `${pend} transaksi nungguin kamu, jangan di-ghosting.`}</span><span style="white-space:nowrap">CEK →</span></button>`
-            : `<button class="chip calm" data-act="go" data-to="kotak"><span>Kotak masuk bersih. Rapi banget.</span><span style="white-space:nowrap">BUKA →</span></button>`;
-  const todays = sortTx(S.transactions.filter(t => t.date === today() && t.type === 'expense'));
-  h += `<div class="sec"><h2>Jajan hari ini</h2>${todays.length > 5 ? `<a href="#riwayat">+${todays.length - 5} lainnya</a>` : `<span class="note">${todays.length} transaksi</span>`}</div>`;
-  h += todays.length ? `<div class="box list">${todays.slice(0, 5).map(t => txRow(t)).join('')}</div>` : `<div class="box empty">Belum ada jajan. Ketuk <b>+</b> buat nyatet.</div>`;
-  if (backupDue()) h += `<button class="chip calm" data-act="go" data-to="pengaturan"><span>Udah lama nggak backup. Jaga-jaga, yuk.</span><span>BACKUP →</span></button>`;
+  const eye = S.hideWealth ? '<path d="M3 3l18 18"/><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/>' : '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>';
+  let h = `<header class="top"><div class="hi"><span class="cuki-av">${cuki('aman', 38)}</span><div><div class="d">${greet()}, ${esc(S.name)}</div><h1>Dompet</h1></div></div>
+    <div class="r"><button class="pill iconbtn" data-act="toggle-wealth" aria-label="${S.hideWealth ? 'Tampilkan saldo' : 'Sembunyikan saldo'}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">${eye}</svg></button></div></header>`;
+  if (!storageOK) h += `<div class="box pad note">Penyimpanan HP tidak bisa dipakai di mode ini (Private Browsing?). Data akan hilang saat ditutup.</div>`;
+
+  h += `<section class="wallet-stage" id="stage" aria-label="Kartu bank">`;
+  banks.forEach((a, i) => {
+    const tx = sortTx(S.transactions.filter(t => t.accountId === a.id || t.toId === a.id)).slice(0, 4);
+    h += `<button class="card skin-${skinOf(a)}" data-act="card" data-id="${a.id}" data-i="${i}" aria-label="Kartu ${esc(a.name)}, saldo ${S.hideWealth ? 'disembunyikan' : rp(accountValue(a))}">
+      <span class="c-top"><span class="c-name">${esc(a.name)}</span><span class="c-bal num">${money(accountValue(a))}</span></span>
+      <span class="c-sub"><span class="c-chip"></span><span class="c-no">TABUNGAN${a.last4 ? ' · •••• ' + esc(a.last4) : ''}</span></span></button>
+      <div class="card-detail" data-for="${a.id}"><div class="sec"><h2>Transaksi ${esc(a.name)}</h2><button class="link" data-act="acc-edit" data-id="${a.id}">Atur akun</button></div>
+      ${tx.length ? `<div class="list">${tx.map(t => txRow(t, true)).join('')}</div>` : `<div class="empty">Belum ada transaksi di akun ini.</div>`}
+      <button class="btn sm" data-act="card" data-id="${a.id}">Tutup</button></div>`;
+  });
+  h += `<div class="wallet" id="wallet"><span class="w-clasp"></span><div class="w-total"><span>Total saldo · ${banks.length + ews.length} akun</span><b class="num">${money(walletTotal())}</b></div></div></section>`;
+
+  if (ews.length) h += `<div class="ew-wrap" id="ew"><div class="sec"><h2>E-wallet</h2></div><div class="ew-row">${ews.map(a => `<button class="ewc skin-${skinOf(a)}" data-act="acc-edit" data-id="${a.id}" aria-label="${esc(a.name)}, saldo ${S.hideWealth ? 'disembunyikan' : rp(accountValue(a))}"><span class="c-name">${esc(a.name)}</span><span class="num">${S.hideWealth ? '•••' : k(accountValue(a))}</span><span class="c-chip"></span></button>`).join('')}</div></div>`;
+
+  h += `<div id="rest">`;
+  if (pend) h += `<button class="chip" data-act="go" data-to="kotak"><span>${pend} transaksi dari notifikasi menunggu dicek.</span><span>Cek</span></button>`;
+  const recent = sortTx(S.transactions).slice(0, 6);
+  h += `<div class="sec"><h2>Terbaru</h2><a href="#riwayat">Semua</a></div>`;
+  h += recent.length ? `<div class="box list">${recent.map(t => txRow(t, true)).join('')}</div>` : `<div class="box empty">Belum ada transaksi. Ketuk <b>+</b> untuk mencatat.</div>`;
+  if (backupDue()) h += `<button class="chip calm" data-act="go" data-to="pengaturan"><span>Sudah lama belum backup. Sebaiknya sekarang.</span><span>Backup</span></button>`;
+  h += `</div>`;
   return h;
+}
+function layoutWallet(animate) {
+  const st = $('#stage'); if (!st) return;
+  if (!animate) st.classList.add('noanim');
+  const cards = [...st.querySelectorAll('.card')], n = cards.length, wl = $('#wallet');
+  const front = n - 1, sel = cards.findIndex(c => c.dataset.id === selCard);
+  if (selCard && sel < 0) selCard = null;
+  st.querySelectorAll('.card-detail').forEach(d => d.classList.toggle('on', d.dataset.for === selCard));
+  let wTop;
+  if (sel < 0) {
+    cards.forEach((c, i) => { c.style.top = i * STEP + 'px'; c.style.zIndex = i + 1; c.style.left = c.style.right = Math.max(0, (front - i) * 4) + 'px'; c.classList.toggle('front', i === front); });
+    wTop = n ? front * STEP + 96 : 0;
+  } else {
+    const det = st.querySelector('.card-detail.on'); det.style.top = (CARD_H + 16) + 'px';
+    wTop = CARD_H + 16 + det.offsetHeight + 28;
+    let j = 0;
+    cards.forEach((c, i) => { if (i === sel) { c.style.top = '0px'; c.style.zIndex = 30; c.style.left = c.style.right = '0px'; c.classList.add('front'); }
+      else { c.style.top = (wTop - 22 + j * 8) + 'px'; c.style.zIndex = 1 + j; c.style.left = c.style.right = (12 + j * 4) + 'px'; c.classList.remove('front'); j++; } });
+  }
+  wl.style.top = wTop + 'px';
+  st.style.height = (wTop + WALLET_H) + 'px';
+  st.classList.toggle('open', sel >= 0);
+  document.querySelectorAll('#ew,#rest').forEach(e => e.classList.toggle('dim', sel >= 0));
+  if (!animate) { st.offsetHeight; st.classList.remove('noanim'); }
 }
 function backupDue() { return S.transactions.length > 10 && (!S.lastBackup || Date.now() - new Date(S.lastBackup) > 14 * 864e5); }
 
@@ -398,6 +435,7 @@ function render() {
   const v = S.setupDone ? view() : 'onboarding';
   const fn = { onboarding: vOnboarding, beranda: vBeranda, kotak: vKotak, riwayat: vRiwayat, aset: vAset, budget: vBudget, pengaturan: vPengaturan, lainnya: vLainnya }[v];
   $('#main').innerHTML = fn();
+  if (v === 'beranda') layoutWallet(false);
   const navV = ['kotak', 'riwayat', 'pengaturan'].includes(v) ? 'lainnya' : v;
   document.querySelectorAll('nav.tabs a[data-v]').forEach(a => a.dataset.v === navV ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
   $('nav.tabs').style.display = v === 'onboarding' ? 'none' : '';
@@ -472,13 +510,15 @@ function accForm(a) {
   else if (!isNew) { const cur = accountValue(a);
     h += `<label for="a-real">Saldo sebenarnya sekarang<div class="amtin"><span>Rp</span><input id="a-real" inputmode="numeric" data-amt value="${nf.format(Math.max(0, cur))}"></div></label><p class="note">Kalau beda sama yang di app (misal ada transaksi kelewat), isi saldo aslinya. Arus menyesuaikan otomatis.</p>`; }
   else h += `<label for="a-init">Saldo sekarang<div class="amtin"><span>Rp</span><input id="a-init" inputmode="numeric" data-amt placeholder="0"></div></label>`;
+  if (isNew || a.kind === 'bank' || a.kind === 'ewallet') h += `<label for="a-last4">4 digit terakhir no. rekening (opsional)<input id="a-last4" inputmode="numeric" maxlength="4" pattern="[0-9]*" value="${esc(a.last4 || '')}" placeholder="mis. 4021"></label>`;
   h += `<p class="err" id="a-err"></p><div class="btnrow">${!isNew ? `<button class="btn danger" data-act="acc-del" data-id="${a.id}">Hapus</button>` : ''}<button class="btn pri" style="flex:1" data-act="acc-save" data-id="${a.id || ''}">Simpan</button></div></div>`;
   openSheet(isNew ? 'Akun baru' : a.name, h);
 }
 function accSave(id) {
   const name = $('#a-name').value.trim(); if (!name) return $('#a-err').textContent = 'Namanya diisi dulu.';
-  if (!id) { const kind = $('#a-kind').value; S.accounts.push({ id: uid(), name, kind, currency: 'IDR', initial: kind === 'investasi' ? 0 : parseAmt($('#a-init').value), initialCost: 0, valuation: null }); }
-  else { const a = acc(id); a.name = name;
+  const l4el = $('#a-last4'), last4 = l4el ? l4el.value.replace(/\D/g, '').slice(-4) : '';
+  if (!id) { const kind = $('#a-kind').value; S.accounts.push({ id: uid(), name, kind, currency: 'IDR', initial: kind === 'investasi' ? 0 : parseAmt($('#a-init').value), initialCost: 0, valuation: null, last4: kind === 'bank' || kind === 'ewallet' ? last4 : '' }); }
+  else { const a = acc(id); a.name = name; if (l4el) a.last4 = last4;
     if (a.kind === 'investasi') { const v = parseFloat(String($('#a-val').value).replace(/\./g, '').replace(',', '.')); a.initialCost = parseAmt($('#a-cost').value);
       if (!isNaN(v)) a.valuation = { value: v, costAt: investCost(a), date: today() }; }
     else { const real = parseAmt($('#a-real').value); a.initial += real - accountValue(a); } }
@@ -494,6 +534,7 @@ document.addEventListener('click', ev => {
   switch (a) {
     case 'close': closeSheet(); break;
     case 'go': location.hash = '#' + el.dataset.to; break;
+    case 'card': selCard = selCard === id ? null : id; layoutWallet(true); if (selCard) window.scrollTo({ top: 0, behavior: 'smooth' }); break;
     case 'ob-done': {
       S.name = ($('#ob-name').value.trim() || 'Bestie'); S.budget = parseAmt($('#ob-budget').value);
       S.accounts.forEach(x => { const e = document.getElementById('ob-' + x.id); if (e) x.initial = parseAmt(e.value); });
@@ -574,7 +615,7 @@ function fetchRate(force) {
 }
 
 /* ---------- mulai ---------- */
-window.addEventListener('hashchange', () => { if (importFromHash()) { render(); return; } closeSheet(); render(); window.scrollTo(0, 0); });
+window.addEventListener('hashchange', () => { selCard = null; if (importFromHash()) { render(); return; } closeSheet(); render(); window.scrollTo(0, 0); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
 S = load();
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
