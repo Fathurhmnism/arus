@@ -86,7 +86,8 @@ const cat = id => S.categories.find(c => c.id === id);
 function rateOf(a) { return a.currency === 'USD' ? (S.rate.usdIdr || 0) : 1; }
 function investCost(a) { let c = a.initialCost || 0; for (const t of S.transactions) if (t.type === 'transfer') { if (t.toId === a.id) c += t.amount; if (t.accountId === a.id) c -= t.amount; } return c; }
 function accountValue(a) {
-  if (a.kind === 'investasi') { const cost = investCost(a); if (!a.valuation) return cost; return a.valuation.value * rateOf(a) + (cost - a.valuation.costAt); }
+  if (a.kind === 'investasi') { if (a.assets && a.assets.length) return a.assets.reduce((s, x) => s + (x.value || 0), 0) * rateOf(a);
+    const cost = investCost(a); if (!a.valuation) return cost; return a.valuation.value * rateOf(a) + (cost - a.valuation.costAt); }
   let b = a.initial || 0;
   for (const t of S.transactions) {
     if (t.accountId === a.id) b += t.type === 'income' ? t.amount : -t.amount;
@@ -213,7 +214,7 @@ function itemReady(it) {
 
 /* ---------- tampilan ---------- */
 let curMonth = monthOf(today()), filter = 'all', query = '';
-const VIEWS = ['beranda', 'kotak', 'riwayat', 'aset', 'budget', 'pengaturan', 'lainnya'];
+const VIEWS = ['beranda', 'kotak', 'riwayat', 'aset', 'budget', 'pengaturan', 'lainnya', 'akun'];
 const view = () => { const h = location.hash.replace('#', ''); return VIEWS.includes(h) ? h : 'beranda'; };
 function header(title, sub, right) {
   return `<header class="top"><div><div class="d">${esc(sub)}</div><h1>${esc(title)}</h1></div><div class="r">${right || ''}</div></header>`;
@@ -373,18 +374,99 @@ function riwayatList(list) {
     return `<div class="day"><span>${esc(dateLabel(d))}</span><span class="num">${out ? '−' + nf.format(out) : ''}</span></div><div class="box list">${groups[d].map(t => txRow(t)).join('')}</div>`; }).join('');
 }
 
+/* ---------- investasi per aset ---------- */
+const ASSET_TYPES = { saham: ['Saham', 'lot'], reksadana: ['Reksa dana', 'unit'], kripto: ['Kripto', 'koin'], lainnya: ['Lainnya', ''] };
+const invAccs = () => S.accounts.filter(a => a.kind === 'investasi');
+const assetRp = (a, x) => (x.value || 0) * rateOf(a);
+function migrateAssets() {
+  // v1 menyimpan satu nilai per akun investasi; v2 merinci per aset. Nilai lama dijadikan satu aset awal, tidak dihapus.
+  let changed = false;
+  for (const a of invAccs()) {
+    if (a.assets) continue;
+    const cost = investCost(a);
+    if (a.valuation || cost > 0) { a.assets = [{ id: uid(), name: 'Portofolio ' + a.name, type: 'lainnya', qty: null, value: a.valuation ? a.valuation.value + (cost - (a.valuation.costAt || 0)) / rateOf(a) : cost / rateOf(a), cost, date: (a.valuation && a.valuation.date) || today() }]; }
+    else a.assets = [];
+    changed = true;
+  }
+  if (changed) save();
+}
+function invTotals() {
+  let v = 0, c = 0;
+  for (const a of invAccs()) for (const x of (a.assets || [])) { v += assetRp(a, x); c += x.cost || 0; }
+  return { v, c, g: v - c };
+}
+function recordInv() {
+  const t = invTotals().v, d = today(); S.invHist = S.invHist || [];
+  const last = S.invHist[S.invHist.length - 1];
+  if (last && last.d === d) { if (last.v !== t) { last.v = t; save(); } }
+  else if (t > 0 || S.invHist.length) { S.invHist.push({ d, v: t }); save(); }
+}
+const pct = (g, c) => c > 0 ? (g >= 0 ? '+' : '−') + Math.abs(g / c * 100).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%' : '';
+let invRange = '3B';
+function invChart() {
+  const days = { '1M': 7, '1B': 31, '3B': 92, '1T': 366, 'Semua': 1e5 }[invRange];
+  const from = dstr(new Date(Date.now() - days * 864e5));
+  const pts = (S.invHist || []).filter(p => p.d >= from);
+  const pills = Object.keys({ '1M': 1, '1B': 1, '3B': 1, '1T': 1, 'Semua': 1 }).map(r => `<button data-act="inv-range" data-v="${r}" aria-pressed="${r === invRange}">${r}</button>`).join('');
+  let svg;
+  if (pts.length < 2) svg = `<div class="chart-empty note">Grafik mulai terisi setelah nilai investasimu tercatat lebih dari satu hari.</div>`;
+  else {
+    const W = 340, H = 140, vs = pts.map(p => p.v), lo = Math.min(...vs), hi = Math.max(...vs), span = hi - lo || 1;
+    const xy = pts.map((p, i) => [i / (pts.length - 1) * W, 12 + (1 - (p.v - lo) / span) * (H - 24)]);
+    const up = vs[vs.length - 1] >= vs[0], col = up ? 'var(--good)' : 'var(--bad)';
+    const line = xy.map(([x, y]) => x.toFixed(1) + ',' + y.toFixed(1)).join(' ');
+    svg = `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Grafik nilai portofolio ${invRange}, ${up ? 'naik' : 'turun'}"><path d="M0 ${H / 3}H${W}M0 ${H * 2 / 3}H${W}" stroke="var(--line)" stroke-width="1"/><polygon points="0,${H} ${line} ${W},${H}" fill="${col}" opacity=".08"/><polyline points="${line}" fill="none" stroke="${col}" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>`;
+  }
+  return `${svg}<div class="seg range">${pills}</div>`;
+}
 function vAset() {
-  const w = wealth();
-  let h = header('Aset', 'Total kekayaan');
-  h += `<div class="hero"><span class="lbl">Total kekayaan bersih</span><span class="big num" style="font-size:38px">${rp(w)}</span><span class="sub">Kurs USD: ${rp(S.rate.usdIdr)}${S.rate.date ? ' · per ' + esc(dateLabel(S.rate.date.slice(0, 10))) : ''} ${S.rate.auto ? '(otomatis)' : '(manual)'}</span><div class="btnrow"><button class="btn sm" data-act="rate-edit">Atur kurs</button></div></div>`;
-  for (const kind of ['bank', 'ewallet', 'tunai', 'investasi']) {
+  recordInv();
+  const t = invTotals();
+  let h = header('Investasi', invAccs().map(a => a.name).join(' · ') || 'Belum ada akun investasi');
+  h += `<section class="inv-head"><span class="note">Nilai portofolio</span><span class="inv-total num">${S.hideWealth ? 'Rp •••' : rp(t.v)}</span>
+    ${t.c > 0 ? `<span class="num" style="color:${t.g >= 0 ? 'var(--good)' : 'var(--bad)'}">${t.g >= 0 ? '▲' : '▼'} ${rp(Math.abs(t.g))} (${pct(t.g, t.c)}) <span class="note">· sejak beli</span></span>` : ''}</section>`;
+  h += invChart();
+  for (const a of invAccs()) {
+    const list = a.assets || [], sum = list.reduce((s, x) => s + assetRp(a, x), 0);
+    h += `<div class="sec"><h2>${esc(a.name.toUpperCase())}${a.currency === 'USD' ? ` · kurs ${rp(S.rate.usdIdr)}` : ''}</h2><span class="note num">${k(sum)}</span></div>`;
+    h += `<div class="box list">${list.map(x => { const v = assetRp(a, x), g = v - (x.cost || 0), ty = ASSET_TYPES[x.type] || ASSET_TYPES.lainnya;
+      const qty = x.qty ? `${x.qty.toLocaleString('id-ID', { maximumFractionDigits: 8 })} ${ty[1]}`.trim() : '';
+      const sub = [ty[0], qty, a.currency === 'USD' ? '$' + (x.value || 0).toLocaleString('en-US', { maximumFractionDigits: 2 }) : ''].filter(Boolean).join(' · ');
+      return `<button class="row" data-act="asset-edit" data-acc="${a.id}" data-id="${x.id}"><span class="m"><b>${esc(x.name)}</b><span>${esc(sub)}</span></span><span class="v num">${rp(v)}${x.cost > 0 ? `<small style="color:${g >= 0 ? 'var(--good)' : 'var(--bad)'}">${pct(g, x.cost)}</small>` : ''}</span></button>`; }).join('') || '<div class="empty">Belum ada aset.</div>'}</div>
+      <div class="btnrow"><button class="btn sm" data-act="asset-new" data-acc="${a.id}">+ Tambah aset</button>${a.currency === 'USD' ? '<button class="btn sm" data-act="rate-edit">Atur kurs</button>' : ''}</div>`;
+  }
+  h += `<p class="note">Nilai aset diperbarui manual. Ketuk aset untuk mengubah nilai, jumlah, atau modalnya.</p>`;
+  return h;
+}
+function assetForm(accId, x) {
+  const a = acc(accId), isNew = !x; x = x || { name: '', type: 'saham', qty: null, value: null, cost: 0 };
+  const cur = a.currency === 'USD' ? '$' : 'Rp';
+  openSheet(isNew ? 'Aset baru · ' + a.name : x.name, `<div class="form">
+    <label for="as-name">Nama aset<input id="as-name" maxlength="32" value="${esc(x.name)}" placeholder="mis. BBRI, BTC, Reksa dana pasar uang"></label>
+    <label for="as-type">Jenis<select id="as-type">${Object.keys(ASSET_TYPES).map(t => `<option value="${t}" ${x.type === t ? 'selected' : ''}>${ASSET_TYPES[t][0]}</option>`).join('')}</select></label>
+    <label for="as-qty">Jumlah (lot / unit / koin, opsional)<input id="as-qty" inputmode="decimal" value="${x.qty != null ? String(x.qty).replace('.', ',') : ''}" placeholder="mis. 20 atau 0,0061"></label>
+    <label for="as-val">Nilai sekarang (${cur})<div class="amtin"><span>${cur}</span><input id="as-val" inputmode="decimal" value="${x.value != null ? String(x.value).replace('.', ',') : ''}" placeholder="0"></div></label>
+    <label for="as-cost">Modal yang sudah kamu keluarkan (Rp)<input id="as-cost" inputmode="numeric" data-amt value="${x.cost ? nf.format(x.cost) : ''}" placeholder="0"></label>
+    <p class="err" id="as-err"></p>
+    <div class="btnrow">${!isNew ? `<button class="btn danger" data-act="asset-del" data-acc="${a.id}" data-id="${x.id}">Hapus</button>` : ''}<button class="btn pri" style="flex:1" data-act="asset-save" data-acc="${a.id}" data-id="${x.id || ''}">Simpan</button></div></div>`);
+}
+const parseDec = v => { v = String(v || '').trim(); if (!v) return null; if (v.includes(',')) v = v.replace(/\./g, '').replace(',', '.'); else if (/^\d{1,3}(\.\d{3})+$/.test(v)) v = v.replace(/\./g, ''); const n = parseFloat(v); return isNaN(n) ? null : n; };
+function assetSave(accId, id) {
+  const a = acc(accId), name = $('#as-name').value.trim(), value = parseDec($('#as-val').value);
+  if (!name) return $('#as-err').textContent = 'Nama asetnya diisi dulu.';
+  if (value == null) return $('#as-err').textContent = 'Nilai sekarang diisi dulu.';
+  const data = { name, type: $('#as-type').value, qty: parseDec($('#as-qty').value), value, cost: parseAmt($('#as-cost').value), date: today() };
+  a.assets = a.assets || [];
+  if (id) Object.assign(a.assets.find(x => x.id === id), data); else a.assets.push(Object.assign({ id: uid() }, data));
+  closeSheet(); commit(); toast('Aset disimpan.');
+}
+
+function vAkun() {
+  let h = header('Akun & saldo', 'Semua rekening, e-wallet, dan tunai', `<button class="pill" data-act="go" data-to="lainnya">← Balik</button>`);
+  for (const kind of ['bank', 'ewallet', 'tunai']) {
     const list = S.accounts.filter(a => a.kind === kind); if (!list.length) continue;
-    const sum = list.reduce((s, a) => s + accountValue(a), 0);
-    h += `<div class="sec"><h2>${KIND_LABEL[kind]}</h2><span class="note num">${k(sum)}</span></div><div class="box list">`;
-    h += list.map(a => { const v = accountValue(a); let sub = KIND_LABEL[a.kind];
-      if (a.kind === 'investasi') { const cost = investCost(a), g = v - cost; sub = a.valuation ? `Modal ${k(cost)} · ${g >= 0 ? '+' : ''}${cost > 0 ? (g / cost * 100).toLocaleString('id-ID', {maximumFractionDigits: 1}) + '%' : k(g)}` : 'Ketuk untuk isi nilai'; if (a.currency === 'USD' && a.valuation) sub += ` · $${a.valuation.value.toLocaleString('en-US')}`; }
-      return `<button class="row" data-act="acc-edit" data-id="${a.id}"><span class="av" style="background:${avColor(a.name)}">${esc(initials(a.name))}</span><span class="m"><b>${esc(a.name)}</b><span>${esc(sub)}</span></span><span class="v num">${rp(v)}</span></button>`; }).join('');
-    h += `</div>`;
+    h += `<div class="sec"><h2>${KIND_LABEL[kind]}</h2><span class="note num">${k(list.reduce((s, a) => s + accountValue(a), 0))}</span></div><div class="box list">`;
+    h += list.map(a => `<button class="row" data-act="acc-edit" data-id="${a.id}"><span class="av" style="background:${avColor(a.name)}">${esc(initials(a.name))}</span><span class="m"><b>${esc(a.name)}</b><span>${a.last4 ? '•••• ' + esc(a.last4) : KIND_LABEL[a.kind]}${kind === 'tunai' ? ' · tidak dihitung di total dompet' : ''}</span></span><span class="v num">${rp(accountValue(a))}</span></button>`).join('') + `</div>`;
   }
   h += `<button class="btn" data-act="acc-new">+ Tambah akun</button>`;
   return h;
@@ -481,6 +563,7 @@ function vLainnya() {
   let h = header('Lainnya', 'Arus v' + VERSION);
   h += `<div class="box list menu">
     ${item('kotak', '<path d="M3 13h5l2 3h4l2-3h5"/><path d="M5 5h14l2 8v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6z"/>', 'Kotak masuk', pend ? pend + ' transaksi menunggu dicek' : 'Semua sudah rapi')}
+    ${item('akun', '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/>', 'Akun & saldo', 'Rekening, e-wallet, tunai, tambah akun')}
     ${item('riwayat', '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', 'Riwayat', 'Semua transaksi per bulan')}
     ${item('pengaturan', '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>', 'Pengaturan', 'Backup, kategori, nama')}
   </div>`;
@@ -489,10 +572,10 @@ function vLainnya() {
 
 function render() {
   const v = S.setupDone ? view() : 'onboarding';
-  const fn = { onboarding: vOnboarding, beranda: vBeranda, kotak: vKotak, riwayat: vRiwayat, aset: vAset, budget: vBudget, pengaturan: vPengaturan, lainnya: vLainnya }[v];
+  const fn = { onboarding: vOnboarding, beranda: vBeranda, kotak: vKotak, riwayat: vRiwayat, aset: vAset, budget: vBudget, pengaturan: vPengaturan, lainnya: vLainnya, akun: vAkun }[v];
   $('#main').innerHTML = fn();
   if (v === 'beranda') layoutWallet(false);
-  const navV = ['kotak', 'riwayat', 'pengaturan'].includes(v) ? 'lainnya' : v;
+  const navV = ['kotak', 'riwayat', 'pengaturan', 'akun'].includes(v) ? 'lainnya' : v;
   document.querySelectorAll('nav.tabs a[data-v]').forEach(a => a.dataset.v === navV ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
   $('nav.tabs').style.display = v === 'onboarding' ? 'none' : '';
   document.querySelectorAll('[data-amt], #ob-budget').forEach(bindAmt);
@@ -559,10 +642,7 @@ function accForm(a) {
   const inv = a.kind === 'investasi';
   let h = `<div class="form"><label for="a-name">Nama<input id="a-name" maxlength="24" value="${esc(a.name)}"></label>`;
   if (isNew) h += `<label for="a-kind">Jenis<select id="a-kind">${Object.keys(KIND_LABEL).map(k2 => `<option value="${k2}">${KIND_LABEL[k2]}</option>`).join('')}</select></label>`;
-  if (inv) { const cur = a.currency, val = a.valuation ? a.valuation.value : '';
-    h += `<label for="a-val">Nilai portofolio sekarang (${cur})<div class="amtin"><span>${cur === 'USD' ? '$' : 'Rp'}</span><input id="a-val" inputmode="decimal" value="${val}" placeholder="0"></div></label>
-    <label for="a-cost">Modal yang sudah ada sebelum pakai Arus (Rp)<input id="a-cost" inputmode="numeric" data-amt value="${a.initialCost ? nf.format(a.initialCost) : ''}"></label>
-    <p class="note">Top up dari bank dicatat sebagai <b>Transfer</b> ke ${esc(a.name || 'akun ini')}, otomatis nambah modal. Nilai pasar cukup diperbarui sesekali.</p>`; }
+  if (inv && !isNew) h += `<p class="note">Nilai akun ini dihitung dari aset-asetnya. Ubah nilai di layar Investasi.</p>`;
   else if (!isNew) { const cur = accountValue(a);
     h += `<label for="a-real">Saldo sebenarnya sekarang<div class="amtin"><span>Rp</span><input id="a-real" inputmode="numeric" data-amt value="${nf.format(Math.max(0, cur))}"></div></label><p class="note">Kalau beda sama yang di app (misal ada transaksi kelewat), isi saldo aslinya. Arus menyesuaikan otomatis.</p>`; }
   else h += `<label for="a-init">Saldo sekarang<div class="amtin"><span>Rp</span><input id="a-init" inputmode="numeric" data-amt placeholder="0"></div></label>`;
@@ -573,10 +653,9 @@ function accForm(a) {
 function accSave(id) {
   const name = $('#a-name').value.trim(); if (!name) return $('#a-err').textContent = 'Namanya diisi dulu.';
   const l4el = $('#a-last4'), last4 = l4el ? l4el.value.replace(/\D/g, '').slice(-4) : '';
-  if (!id) { const kind = $('#a-kind').value; S.accounts.push({ id: uid(), name, kind, currency: 'IDR', initial: kind === 'investasi' ? 0 : parseAmt($('#a-init').value), initialCost: 0, valuation: null, last4: kind === 'bank' || kind === 'ewallet' ? last4 : '' }); }
+  if (!id) { const kind = $('#a-kind').value; S.accounts.push({ id: uid(), name, kind, currency: 'IDR', initial: kind === 'investasi' ? 0 : parseAmt($('#a-init').value), initialCost: 0, valuation: null, assets: kind === 'investasi' ? [] : undefined, last4: kind === 'bank' || kind === 'ewallet' ? last4 : '' }); }
   else { const a = acc(id); a.name = name; if (l4el) a.last4 = last4;
-    if (a.kind === 'investasi') { const v = parseFloat(String($('#a-val').value).replace(/\./g, '').replace(',', '.')); a.initialCost = parseAmt($('#a-cost').value);
-      if (!isNaN(v)) a.valuation = { value: v, costAt: investCost(a), date: today() }; }
+    if (a.kind === 'investasi') { /* nilai dari aset */ }
     else { const real = parseAmt($('#a-real').value); a.initial += real - accountValue(a); } }
   closeSheet(); commit(); toast('Akun disimpan.');
 }
@@ -607,6 +686,11 @@ document.addEventListener('click', ev => {
     case 'tx-save': saveTx(); break;
     case 'tx-del': confirmBox('Hapus transaksi ini?', 'Hapus').then(ok => { if (!ok) return; S.transactions = S.transactions.filter(x => x.id !== D.id); closeSheet(); commit(); toast('Dihapus.'); }); break;
     case 'budget-edit': openSheet('Budget bulanan', `<div class="form"><div class="amtin"><span>Rp</span><input id="b-amt" inputmode="numeric" data-amt value="${S.budget ? nf.format(S.budget) : ''}" aria-label="Budget bulanan"></div><p class="note">Batas total pengeluaran sebulan (di luar tabungan, investasi, dan transfer antar akun).</p><button class="btn pri" data-act="budget-save">Simpan</button></div>`); break;
+    case 'inv-range': invRange = el.dataset.v; render(); break;
+    case 'asset-new': assetForm(el.dataset.acc, null); break;
+    case 'asset-edit': { const a = acc(el.dataset.acc); const x = a && (a.assets || []).find(y => y.id === id); if (x) assetForm(a.id, x); break; }
+    case 'asset-save': assetSave(el.dataset.acc, id); break;
+    case 'asset-del': confirmBox('Hapus aset ini?', 'Hapus').then(ok => { if (!ok) return; const a = acc(el.dataset.acc); a.assets = a.assets.filter(y => y.id !== id); closeSheet(); commit(); toast('Aset dihapus.'); }); break;
     case 'catbudget-edit': catBudgetForm(); break;
     case 'catbudget-save': { const cb = {}; document.querySelectorAll('[data-cb]').forEach(e => { const v = parseAmt(e.value); if (v > 0) cb[e.dataset.cb] = v; }); S.catBudget = cb; closeSheet(); commit(); toast('Toples kategori diperbarui.'); break; }
     case 'budget-save': S.budget = parseAmt($('#b-amt').value); closeSheet(); commit(); toast('Budget disimpan. Toples dan jatah harian ikut menyesuaikan.'); break;
@@ -676,6 +760,7 @@ function fetchRate(force) {
 window.addEventListener('hashchange', () => { selCard = null; if (importFromHash()) { render(); return; } closeSheet(); render(); window.scrollTo(0, 0); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
 S = load();
+migrateAssets();
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 importFromHash();
 render();
