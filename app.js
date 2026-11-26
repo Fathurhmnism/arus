@@ -1,4 +1,5 @@
-/* Arus — tracker keuangan pribadi. Data hanya di perangkat (localStorage). */
+/* Penny — tracker keuangan pribadi. Data hanya di perangkat (localStorage).
+   Catatan: kunci penyimpanan tetap 'arus.v2' (nama lama aplikasi) supaya data pengguna v1 tetap terbaca. */
 (function () {
 'use strict';
 const KEY = 'arus.v2';
@@ -59,11 +60,13 @@ const DEFAULT_ACCS = [
   ['GoPay','ewallet'],['OVO','ewallet'],['ShopeePay','ewallet'],['DANA','ewallet'],['Stockbit','investasi','IDR'],['Binance','investasi','USD']
 ];
 const KIND_LABEL = { bank: 'Rekening bank', ewallet: 'E-wallet', tunai: 'Tunai', investasi: 'Investasi' };
+/* Tunai tidak dipakai di Penny: akunnya disembunyikan dari semua pilihan (data lama tetap tersimpan, tidak dihapus). */
+const live = () => S.accounts.filter(a => a.kind !== 'tunai');
 
 function freshState() {
   return {
     v: 2, name: 'Fathur', setupDone: false,
-    accounts: DEFAULT_ACCS.map(([name, kind, cur], i) => ({ id: 'a' + i, name, kind, currency: cur || 'IDR', initial: 0, initialCost: 0, valuation: null })),
+    accounts: DEFAULT_ACCS.map(([name, kind, cur], i) => ({ id: 'a' + i, name, kind, currency: cur || 'IDR', initial: 0, initialCost: 0, valuation: null })).filter(a => a.kind !== 'tunai'),
     categories: DEFAULT_CATS.map(([name, kind, kw], i) => ({ id: 'c' + i, name, kind, kw })),
     transactions: [], inbox: [], merchantMap: {}, budget: 0, lastAccount: 'a6',
     rate: { usdIdr: 16500, date: null, auto: true }, lastBackup: null, hideWealth: false
@@ -153,7 +156,7 @@ function learn(merchant, catId) { const m = norm(merchant); if (m && catId) S.me
 /* ---------- kotak masuk ---------- */
 function matchAccount(app) {
   const a = norm(app); if (!a) return null;
-  return (S.accounts.find(x => norm(x.name) === a) || S.accounts.find(x => a.includes(norm(x.name)) || norm(x.name).includes(a)) || {}).id || null;
+  return (live().find(x => norm(x.name) === a) || live().find(x => a.includes(norm(x.name)) || norm(x.name).includes(a)) || {}).id || null;
 }
 function ingest(entries) {
   let added = 0, skipped = 0;
@@ -232,18 +235,18 @@ function txRow(t, withDate) {
 const sortTx = list => list.slice().sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || '')) || (b.created || 0) - (a.created || 0));
 
 function vOnboarding() {
-  return `<div class="onb">${header('Halo, ' + S.name, 'Selamat datang di Arus')}
+  return `<div class="onb">${header('Halo, ' + S.name, 'Selamat datang di Penny')}
   <div class="hero"><div class="who">${cuki('aman')}<div class="bubble">Saya Cuki, asisten dompetmu. Isi dua hal ini dulu, sisanya bisa menyusul.</div></div></div>
   <div class="box pad form">
     <label for="ob-name">Panggil kamu siapa?<input id="ob-name" value="${esc(S.name)}" maxlength="20"></label>
     <label for="ob-budget">Budget pengeluaran per bulan<div class="amtin"><span>Rp</span><input id="ob-budget" inputmode="numeric" placeholder="0" value="${S.budget ? nf.format(S.budget) : ''}"></div></label>
-    <p class="note">Batas belanja bulananmu (di luar tabungan dan investasi). Dari angka ini Arus menghitung toples dan jatah harian. Belum yakin? Isi perkiraan dulu, bisa diubah kapan saja.</p>
+    <p class="note">Batas belanja bulananmu (di luar tabungan dan investasi). Dari angka ini Penny menghitung toples dan jatah harian. Belum yakin? Isi perkiraan dulu, bisa diubah kapan saja.</p>
   </div>
   <div class="box pad form"><div class="lab">Saldo sekarang di tiap akun (opsional)</div>
-  ${S.accounts.filter(a => a.kind !== 'investasi').map(a => `<label for="ob-${a.id}">${esc(a.name)}<input id="ob-${a.id}" inputmode="numeric" placeholder="0" data-amt value="${a.initial ? nf.format(a.initial) : ''}"></label>`).join('')}
+  ${live().filter(a => a.kind !== 'investasi').map(a => `<label for="ob-${a.id}">${esc(a.name)}<input id="ob-${a.id}" inputmode="numeric" placeholder="0" data-amt value="${a.initial ? nf.format(a.initial) : ''}"></label>`).join('')}
   <p class="note">Aset Stockbit dan Binance bisa diisi nanti di layar Investasi.</p></div>
   <button class="btn pri" data-act="ob-done">Mulai</button>
-  <div class="box pad form"><div class="lab">Sudah pernah memakai Arus sebelumnya?</div><p class="note">Pulihkan dari file backup (.json), semua datamu kembali.</p><button class="btn" data-act="restore">Pulihkan dari backup</button></div></div>`;
+  <div class="box pad form"><div class="lab">Sudah pernah memakai Penny (dulu Arus) sebelumnya?</div><p class="note">Pulihkan dari file backup (.json), semua datamu kembali.</p><button class="btn" data-act="restore">Pulihkan dari backup</button></div></div>`;
 }
 
 /* ---------- dompet ---------- */
@@ -342,9 +345,9 @@ function inboxCard(it) {
   const time = new Date(it.at);
   const seg = [['expense', 'Keluar'], ['income', 'Masuk'], ['transfer', 'Transfer']].map(([v, l]) => `<button data-act="ib-type" data-id="${it.id}" data-v="${v}" aria-pressed="${ty === v}">${l}</button>`).join('');
   let body = '';
-  if (!it.accountId) body += `<label class="lab">Akun mana?<select data-ib="acc" data-id="${it.id}" class="inp"><option value="">Pilih akun</option>${S.accounts.map(x => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select></label>`;
+  if (!it.accountId) body += `<label class="lab">Akun mana?<select data-ib="acc" data-id="${it.id}" class="inp"><option value="">Pilih akun</option>${live().map(x => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select></label>`;
   if (!it.p.amount) body += `<label class="lab">Nominal<input data-ib="amt" data-id="${it.id}" inputmode="numeric" class="inp"></label>`;
-  if (ty === 'transfer') body += `<div class="lab">${it.p.direction === 'in' ? 'Dari akun' : 'Ke akun'}</div><div class="accs">${S.accounts.filter(x => x.id !== it.accountId).map(x => `<button data-act="ib-to" data-id="${it.id}" data-v="${x.id}" aria-pressed="${it.ui.toId === x.id}">${esc(x.name)}</button>`).join('')}</div>`;
+  if (ty === 'transfer') body += `<div class="lab">${it.p.direction === 'in' ? 'Dari akun' : 'Ke akun'}</div><div class="accs">${live().filter(x => x.id !== it.accountId).map(x => `<button data-act="ib-to" data-id="${it.id}" data-v="${x.id}" aria-pressed="${it.ui.toId === x.id}">${esc(x.name)}</button>`).join('')}</div>`;
   else if (ty) { const sug = suggestCats(it.p.merchant, it.title + ' ' + it.body, ty).slice(0, 7);
     body += `<div class="cats">${sug.map(id => `<button data-act="ib-cat" data-id="${it.id}" data-v="${id}" aria-pressed="${it.ui.catId === id}">${esc(cat(id).name)}</button>`).join('')}</div>`; }
   const sign = ty === 'income' ? '+' : ty === 'expense' ? '−' : '';
@@ -463,11 +466,11 @@ function assetSave(accId, id) {
 }
 
 function vAkun() {
-  let h = header('Akun & saldo', 'Semua rekening, e-wallet, dan tunai', `<button class="pill" data-act="go" data-to="lainnya">← Balik</button>`);
-  for (const kind of ['bank', 'ewallet', 'tunai']) {
+  let h = header('Akun & saldo', 'Semua rekening dan e-wallet', `<button class="pill" data-act="go" data-to="lainnya">← Balik</button>`);
+  for (const kind of ['bank', 'ewallet']) {
     const list = S.accounts.filter(a => a.kind === kind); if (!list.length) continue;
     h += `<div class="sec"><h2>${KIND_LABEL[kind]}</h2><span class="note num">${k(list.reduce((s, a) => s + accountValue(a), 0))}</span></div><div class="box list">`;
-    h += list.map(a => `<button class="row" data-act="acc-edit" data-id="${a.id}"><span class="av" style="background:${avColor(a.name)}">${esc(initials(a.name))}</span><span class="m"><b>${esc(a.name)}</b><span>${a.last4 ? '•••• ' + esc(a.last4) : KIND_LABEL[a.kind]}${kind === 'tunai' ? ' · tidak dihitung di total dompet' : ''}</span></span><span class="v num">${rp(accountValue(a))}</span></button>`).join('') + `</div>`;
+    h += list.map(a => `<button class="row" data-act="acc-edit" data-id="${a.id}"><span class="av" style="background:${avColor(a.name)}">${esc(initials(a.name))}</span><span class="m"><b>${esc(a.name)}</b><span>${a.last4 ? '•••• ' + esc(a.last4) : KIND_LABEL[a.kind]}</span></span><span class="v num">${rp(accountValue(a))}</span></button>`).join('') + `</div>`;
   }
   h += `<button class="btn" data-act="acc-new">+ Tambah akun</button>`;
   return h;
@@ -517,7 +520,7 @@ function vBudget() {
       <span class="note">Sisa budget bulan ini</span>
       <span class="big2 num">${sisa < 0 ? '−' : ''}${rp(Math.abs(sisa))}</span>
       <span class="note num">dari ${rp(S.budget)} · <span style="color:var(--ink)">${k(Math.max(0, sisa) / d.left)} / hari</span></span></section>`;
-  } else h += `<div class="box pad form"><p class="note">Budget bulanan belum diatur. Dari angka ini Arus menghitung isi toples dan jatah harianmu.</p><button class="btn pri" data-act="budget-edit">Atur budget bulanan</button></div>`;
+  } else h += `<div class="box pad form"><p class="note">Budget bulanan belum diatur. Dari angka ini Penny menghitung isi toples dan jatah harianmu.</p><button class="btn pri" data-act="budget-edit">Atur budget bulanan</button></div>`;
 
   const cb = catBudgets(), jarCats = S.categories.filter(c => c.kind === 'expense' && cb[c.id] > 0);
   h += `<div class="sec"><h2>Per kategori</h2><button class="link" data-act="catbudget-edit">${jarCats.length ? 'Atur' : '+ Atur budget kategori'}</button></div>`;
@@ -547,7 +550,7 @@ function catBudgetForm() {
 }
 
 function vPengaturan() {
-  let h = header('Pengaturan', 'Arus v' + VERSION, `<button class="pill" data-act="go" data-to="lainnya">← Balik</button>`);
+  let h = header('Pengaturan', 'Penny v' + VERSION, `<button class="pill" data-act="go" data-to="lainnya">← Balik</button>`);
   h += `<div class="box pad form"><label for="set-name">Nama panggilan<input id="set-name" value="${esc(S.name)}" maxlength="20"></label><button class="btn sm" data-act="save-name">Simpan nama</button></div>`;
   h += `<div class="sec"><h2>Backup</h2><span class="note">Terakhir: ${S.lastBackup ? esc(dateLabel(S.lastBackup.slice(0, 10))) : 'belum pernah'}</span></div>
   <div class="box pad form"><p class="note">Datamu hanya tersimpan di HP ini. Simpan backup ke app Files secara rutin (pilih di iPhone, bukan iCloud, kalau ingin sepenuhnya offline).</p>
@@ -561,10 +564,10 @@ function vLainnya() {
   const pend = S.inbox.filter(x => x.status === 'pending').length;
   const ic = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
   const item = (to, icon, title, sub) => `<button class="row" data-act="go" data-to="${to}">${ic(icon)}<span class="m"><b>${title}</b><span>${sub}</span></span><span class="go" aria-hidden="true">›</span></button>`;
-  let h = header('Lainnya', 'Arus v' + VERSION);
+  let h = header('Lainnya', 'Penny v' + VERSION);
   h += `<div class="box list menu">
     ${item('kotak', '<path d="M3 13h5l2 3h4l2-3h5"/><path d="M5 5h14l2 8v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6z"/>', 'Kotak masuk', pend ? pend + ' transaksi menunggu dicek' : 'Semua sudah rapi')}
-    ${item('akun', '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/>', 'Akun & saldo', 'Rekening, e-wallet, tunai, tambah akun')}
+    ${item('akun', '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/>', 'Akun & saldo', 'Rekening, e-wallet, tambah akun')}
     ${item('riwayat', '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', 'Riwayat', 'Semua transaksi per bulan')}
     ${item('pengaturan', '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>', 'Pengaturan', 'Backup, kategori, nama')}
   </div>`;
@@ -598,7 +601,7 @@ function bindAmt(el) { if (el._b) return; el._b = 1; el.addEventListener('input'
 let D = null;
 function txForm(t, preset) {
   if (t) D = Object.assign({}, t, { _edit: true });
-  else { const n = new Date(); D = Object.assign({ type: 'expense', amount: 0, date: dstr(n), time: tstr(n), accountId: S.lastAccount || S.accounts[0].id, merchant: '', note: '' }, preset || {}); }
+  else { const n = new Date(); D = Object.assign({ type: 'expense', amount: 0, date: dstr(n), time: tstr(n), accountId: (acc(S.lastAccount) && acc(S.lastAccount).kind !== 'tunai' ? S.lastAccount : (live()[0] || {}).id), merchant: '', note: '' }, preset || {}); }
   renderTxForm();
 }
 function readTx() { const g = id => { const e = document.getElementById(id); return e ? e.value : undefined; };
@@ -606,11 +609,11 @@ function readTx() { const g = id => { const e = document.getElementById(id); ret
   if (g('f-merchant') !== undefined) D.merchant = g('f-merchant').trim(); if (g('f-note') !== undefined) D.note = g('f-note').trim(); }
 function renderTxForm() {
   const ty = D.type;
-  const accs = S.accounts.filter(a => ty === 'transfer' || a.kind !== 'investasi');
+  const accs = live().filter(a => ty === 'transfer' || a.kind !== 'investasi');
   let h = `<div class="form"><div class="seg">${[['expense', 'Keluar'], ['income', 'Masuk'], ['transfer', 'Transfer']].map(([v, l]) => `<button data-act="f-type" data-v="${v}" aria-pressed="${ty === v}">${l}</button>`).join('')}</div>
   <div class="amtin"><span>Rp</span><input id="f-amt" inputmode="numeric" placeholder="0" autocomplete="off" value="${D.amount ? nf.format(D.amount) : ''}" aria-label="Jumlah"></div>
   <div class="lab">${ty === 'income' ? 'Masuk ke' : 'Dari'}</div><div class="accs">${accs.map(a => `<button data-act="f-acc" data-v="${a.id}" aria-pressed="${D.accountId === a.id}">${esc(a.name)}</button>`).join('')}</div>`;
-  if (ty === 'transfer') h += `<div class="lab">Ke</div><div class="accs">${S.accounts.filter(a => a.id !== D.accountId).map(a => `<button data-act="f-to" data-v="${a.id}" aria-pressed="${D.toId === a.id}">${esc(a.name)}</button>`).join('')}</div>`;
+  if (ty === 'transfer') h += `<div class="lab">Ke</div><div class="accs">${live().filter(a => a.id !== D.accountId).map(a => `<button data-act="f-to" data-v="${a.id}" aria-pressed="${D.toId === a.id}">${esc(a.name)}</button>`).join('')}</div>`;
   else { const sug = suggestCats(D.merchant, '', ty); if (!D.categoryId || !cat(D.categoryId) || cat(D.categoryId).kind !== ty) D.categoryId = D._edit ? D.categoryId : null;
     h += `<div class="lab">Kategori</div><div class="cats">${sug.map(id => `<button data-act="f-cat" data-v="${id}" aria-pressed="${D.categoryId === id}">${esc(cat(id).name)}</button>`).join('')}</div>`;
     h += `<label for="f-merchant">${ty === 'income' ? 'Dari siapa' : 'Merchant / tempat'} (opsional)<input id="f-merchant" maxlength="40" value="${esc(D.merchant)}" placeholder="${ty === 'income' ? 'mis. Kantor' : 'mis. Kopi Kenangan'}"></label>`; }
@@ -642,10 +645,10 @@ function accForm(a) {
   const isNew = !a; a = a || { name: '', kind: 'ewallet', currency: 'IDR', initial: 0, initialCost: 0 };
   const inv = a.kind === 'investasi';
   let h = `<div class="form"><label for="a-name">Nama<input id="a-name" maxlength="24" value="${esc(a.name)}"></label>`;
-  if (isNew) h += `<label for="a-kind">Jenis<select id="a-kind">${Object.keys(KIND_LABEL).map(k2 => `<option value="${k2}">${KIND_LABEL[k2]}</option>`).join('')}</select></label>`;
+  if (isNew) h += `<label for="a-kind">Jenis<select id="a-kind">${Object.keys(KIND_LABEL).filter(k2 => k2 !== 'tunai').map(k2 => `<option value="${k2}">${KIND_LABEL[k2]}</option>`).join('')}</select></label>`;
   if (inv && !isNew) h += `<p class="note">Nilai akun ini dihitung dari aset-asetnya. Ubah nilai di layar Investasi.</p>`;
   else if (!isNew) { const cur = accountValue(a);
-    h += `<label for="a-real">Saldo sebenarnya sekarang<div class="amtin"><span>Rp</span><input id="a-real" inputmode="numeric" data-amt value="${nf.format(Math.max(0, cur))}"></div></label><p class="note">Kalau beda sama yang di app (misal ada transaksi kelewat), isi saldo aslinya. Arus menyesuaikan otomatis.</p>`; }
+    h += `<label for="a-real">Saldo sebenarnya sekarang<div class="amtin"><span>Rp</span><input id="a-real" inputmode="numeric" data-amt value="${nf.format(Math.max(0, cur))}"></div></label><p class="note">Kalau beda sama yang di app (misal ada transaksi kelewat), isi saldo aslinya. Penny menyesuaikan otomatis.</p>`; }
   else h += `<label for="a-init">Saldo sekarang<div class="amtin"><span>Rp</span><input id="a-init" inputmode="numeric" data-amt placeholder="0"></div></label>`;
   if (isNew || a.kind === 'bank' || a.kind === 'ewallet') h += `<label for="a-last4">4 digit terakhir no. rekening (opsional)<input id="a-last4" inputmode="numeric" maxlength="4" pattern="[0-9]*" value="${esc(a.last4 || '')}" placeholder="mis. 4021"></label>`;
   h += `<p class="err" id="a-err"></p><div class="btnrow">${!isNew ? `<button class="btn danger" data-act="acc-del" data-id="${a.id}">Hapus</button>` : ''}<button class="btn pri" style="flex:1" data-act="acc-save" data-id="${a.id || ''}">Simpan</button></div></div>`;
@@ -709,14 +712,14 @@ document.addEventListener('click', ev => {
     case 'ib-to': if (it) { it.ui.toId = el.dataset.v; save(); render(); } break;
     case 'ib-save': if (it && itemReady(it)) { const t = saveInboxItem(it); commit(); toast(saveToast(t, daily().mood)); } break;
     case 'ib-skip': if (it) { S.inbox = S.inbox.filter(x => x.id !== id); commit(); toast('Diabaikan.'); } break;
-    case 'ib-edit': if (it) { const at = new Date(it.at); D = { type: it.ui.type || 'expense', amount: it.p.amount || 0, date: dstr(at), time: tstr(at), accountId: it.accountId || S.accounts[0].id, toId: it.ui.toId, categoryId: it.ui.catId, merchant: it.p.merchant || '', note: '', source: 'notif', fromInbox: it.id, rawKey: it.app + '|' + it.title + '|' + it.body + '|' + dstr(at) }; renderTxForm(); } break;
+    case 'ib-edit': if (it) { const at = new Date(it.at); D = { type: it.ui.type || 'expense', amount: it.p.amount || 0, date: dstr(at), time: tstr(at), accountId: it.accountId || (live()[0] || {}).id, toId: it.ui.toId, categoryId: it.ui.catId, merchant: it.p.merchant || '', note: '', source: 'notif', fromInbox: it.id, rawKey: it.app + '|' + it.title + '|' + it.body + '|' + dstr(at) }; renderTxForm(); } break;
     case 'inbox-save-all': { const ready = S.inbox.filter(x => x.status === 'pending' && !x.pairId && itemReady(x)); ready.forEach(saveInboxItem); commit(); toast(`${ready.length} transaksi tercatat sekaligus.`); break; }
     case 'unpair': if (it) { const mate = S.inbox.find(x => x.id === it.pairId); delete it.pairId; if (mate) delete mate.pairId; save(); render(); } break;
     case 'pair-save': if (it) { const mate = S.inbox.find(x => x.id === it.pairId); const at = new Date(it.at);
       const t = { id: uid(), date: dstr(at), time: tstr(at), type: 'transfer', amount: it.p.amount, accountId: it.accountId, toId: mate.accountId, note: '', source: 'notif', rawKey: it.app + '|' + it.title + '|' + it.body + '|' + dstr(at) };
       S.transactions.push(t); S.inbox = S.inbox.filter(x => x.id !== it.id && x.id !== mate.id); commit(); toast(saveToast(t)); } break;
     case 'unskip': if (it) { it.status = 'pending'; it.p.skip = false; it.ui = { type: it.p.direction === 'in' ? 'income' : 'expense' }; it.ui.catId = suggestCats(it.p.merchant, it.title + ' ' + it.body, it.ui.type)[0]; save(); render(); } break;
-    case 'paste-notif': openSheet('Tempel notifikasi', `<div class="form"><label for="pn-app">Dari aplikasi<select id="pn-app">${S.accounts.map(x => `<option>${esc(x.name)}</option>`).join('')}</select></label><label for="pn-text">Teks notifikasi<textarea id="pn-text" placeholder="mis. Pembayaran Rp24.000 ke Kopi Kenangan berhasil"></textarea></label><p class="note">Untuk mencoba, atau saat Shortcuts sedang bermasalah. Teksnya dibaca sama seperti notifikasi otomatis.</p><button class="btn pri" data-act="paste-go">Masukkan ke kotak masuk</button></div>`); break;
+    case 'paste-notif': openSheet('Tempel notifikasi', `<div class="form"><label for="pn-app">Dari aplikasi<select id="pn-app">${live().map(x => `<option>${esc(x.name)}</option>`).join('')}</select></label><label for="pn-text">Teks notifikasi<textarea id="pn-text" placeholder="mis. Pembayaran Rp24.000 ke Kopi Kenangan berhasil"></textarea></label><p class="note">Untuk mencoba, atau saat Shortcuts sedang bermasalah. Teksnya dibaca sama seperti notifikasi otomatis.</p><button class="btn pri" data-act="paste-go">Masukkan ke kotak masuk</button></div>`); break;
     case 'paste-go': { const txt = $('#pn-text').value.trim(); if (!txt) break; const r = ingest([{ app: $('#pn-app').value, time: '', title: '', body: txt }]); closeSheet(); location.hash = '#kotak'; render(); toast(r.added ? 'Masuk kotak masuk.' : 'Sepertinya bukan transaksi, jadi masuk "Dibuang otomatis".'); break; }
     /* pengaturan */
     case 'save-name': S.name = $('#set-name').value.trim() || S.name; commit(); toast('Baik, ' + S.name + '.'); break;
@@ -740,13 +743,13 @@ async function shareOrDownload(name, text, type) {
   catch (e) { if (e && e.name === 'AbortError') return false; }
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); return true;
 }
-async function doBackup() { const ok = await shareOrDownload('arus-backup-' + today() + '.json', JSON.stringify(Object.assign({}, S, { exportedAt: new Date().toISOString(), app: 'Arus' })), 'application/json');
+async function doBackup() { const ok = await shareOrDownload('penny-backup-' + today() + '.json', JSON.stringify(Object.assign({}, S, { exportedAt: new Date().toISOString(), app: 'Penny' })), 'application/json');
   if (ok) { S.lastBackup = new Date().toISOString(); commit(); toast('Backup tersimpan.'); } }
 function doCsv() { const rows = [['Tanggal', 'Jam', 'Jenis', 'Jumlah', 'Akun', 'Ke akun', 'Kategori', 'Merchant', 'Catatan']];
   sortTx(S.transactions).reverse().forEach(t => rows.push([t.date, t.time || '', { expense: 'Keluar', income: 'Masuk', transfer: 'Transfer' }[t.type], t.amount, (acc(t.accountId) || {}).name || '', (acc(t.toId) || {}).name || '', (cat(t.categoryId) || {}).name || '', t.merchant || '', t.note || '']));
-  shareOrDownload('arus-transaksi-' + today() + '.csv', '﻿' + rows.map(r => r.map(v => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : v).join(',')).join('\n'), 'text/csv'); }
-$('#importFile').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { let d; try { d = JSON.parse(r.result); } catch (x) { toast('File ini bukan backup Arus.'); return; }
-  if (!d || !d.accounts || !d.transactions) { toast('File ini bukan backup Arus.'); return; }
+  shareOrDownload('penny-transaksi-' + today() + '.csv', '﻿' + rows.map(r => r.map(v => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : v).join(',')).join('\n'), 'text/csv'); }
+$('#importFile').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { let d; try { d = JSON.parse(r.result); } catch (x) { toast('File ini bukan backup Penny.'); return; }
+  if (!d || !d.accounts || !d.transactions) { toast('File ini bukan backup Penny.'); return; }
   confirmBox(`Pulihkan backup (${d.transactions.length} transaksi)? Data sekarang akan diganti.`, 'Pulihkan').then(ok => { if (!ok) return; delete d.exportedAt; delete d.app; S = Object.assign(freshState(), d); S.setupDone = true; commit(); toast('Backup dipulihkan.'); }); }; r.readAsText(f); e.target.value = ''; });
 
 /* ---------- kurs ---------- */

@@ -1,4 +1,6 @@
-# Panduan Setup Arus di iPhone
+# Panduan Setup Penny di iPhone
+
+> Penny adalah nama baru Arus (mulai v2). Alamat aplikasi dan semua Shortcut lama tetap sama dan tetap jalan; nama Shortcut "Buka Arus" boleh diganti jadi "Buka Penny" kalau mau.
 
 Ganti `fathurhmnism` di bawah dengan username GitHub-mu. Alamat aplikasinya: **https://fathurhmnism.github.io/arus/**
 
