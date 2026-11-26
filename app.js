@@ -569,9 +569,9 @@ function vBudget() {
   h += `<div class="sec"><h2>By category</h2><button class="link" data-act="catbudget-edit">${jarCats.length ? 'Edit' : '+ Set category budgets'}</button></div>`;
   let low = null;
   if (jarCats.length) {
-    h += `<div class="jar-grid">${jarCats.map(c => { const left = (cb[c.id] - (by[c.id] || 0)) / cb[c.id], warn = left < 0.15;
+    h += `<div class="jar-grid">${jarCats.map(c => { const left = (cb[c.id] - (by[c.id] || 0)) / cb[c.id], done = (by[c.id] || 0) === cb[c.id], warn = !done && left < 0.15;
       if (warn && (!low || left < low.left)) low = { c, left, over: (by[c.id] || 0) - cb[c.id] };
-      return `<button class="jar-cell" data-act="catbudget-edit" aria-label="${esc(c.name)}, ${Math.max(0, Math.round(left * 100))} percent left">${jarSvg('k' + c.id, left, 56, false, warn)}<span class="jn">${esc(c.name)}</span><span class="jp" style="color:${warn ? 'var(--bad)' : 'var(--muted)'}">${left < 0 ? k(-left * cb[c.id]) + ' over' : Math.round(left * 100) + '% left'}</span></button>`; }).join('')}</div>`;
+      return `<button class="jar-cell" data-act="catbudget-edit" aria-label="${esc(c.name)}, ${Math.max(0, Math.round(left * 100))} percent left">${jarSvg('k' + c.id, left, 56, false, warn)}<span class="jn">${esc(c.name)}</span><span class="jp" style="color:${warn ? 'var(--bad)' : done ? 'var(--good)' : 'var(--muted)'}">${done ? 'Fully used' : left < 0 ? k(-left * cb[c.id]) + ' over' : Math.round(left * 100) + '% left'}</span></button>`; }).join('')}</div>`;
   } else h += `<div class="box pad note">Give a category a budget (Food or Date, say) and it gets a jar of its own.</div>`;
 
   let line = null;
